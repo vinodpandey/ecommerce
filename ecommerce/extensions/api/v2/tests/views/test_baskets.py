@@ -264,7 +264,7 @@ class OrderByBasketRetrieveViewTests(OrderDetailViewTestMixin, TestCase):
 class BasketDestroyViewTests(TestCase):
     def setUp(self):
         super(BasketDestroyViewTests, self).setUp()
-        self.basket = BasketFactory()
+        self.basket = BasketFactory(site=self.site)
         self.url = reverse('api:v2:baskets:destroy', kwargs={'basket_id': self.basket.id})
 
     def test_authorization(self):

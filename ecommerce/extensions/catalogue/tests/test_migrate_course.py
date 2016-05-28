@@ -151,7 +151,7 @@ class MigratedCourseTests(CourseMigrationTestMixin, TestCase):
     def _migrate_course_from_lms(self):
         """ Create a new MigratedCourse and simulate the loading of data from LMS. """
         self._mock_lms_apis()
-        migrated_course = MigratedCourse(self.course_id, self.site.domain)
+        migrated_course = MigratedCourse(self.course_id, self.site.siteconfiguration)
         migrated_course.load_from_lms(ACCESS_TOKEN)
         return migrated_course
 
@@ -196,7 +196,7 @@ class MigratedCourseTests(CourseMigrationTestMixin, TestCase):
 
         # Try migrating the course, which should fail.
         try:
-            migrated_course = MigratedCourse(self.course_id, self.site.domain)
+            migrated_course = MigratedCourse(self.course_id, self.site.siteconfiguration)
             migrated_course.load_from_lms(ACCESS_TOKEN)
         except Exception as ex:  # pylint: disable=broad-except
             self.assertEqual(ex.message, 'Aborting migration. No name is available for {}.'.format(self.course_id))
@@ -222,7 +222,7 @@ class MigratedCourseTests(CourseMigrationTestMixin, TestCase):
             content_type=JSON
         )
 
-        migrated_course = MigratedCourse(self.course_id, self.site.domain)
+        migrated_course = MigratedCourse(self.course_id, self.site.siteconfiguration)
         migrated_course.load_from_lms(ACCESS_TOKEN)
         course = migrated_course.course
 
@@ -256,7 +256,7 @@ class MigratedCourseTests(CourseMigrationTestMixin, TestCase):
         }
         httpretty.register_uri(httpretty.GET, self.commerce_api_url, body=json.dumps(body), content_type=JSON)
 
-        migrated_course = MigratedCourse(self.course_id, self.site.domain)
+        migrated_course = MigratedCourse(self.course_id, self.site.siteconfiguration)
         migrated_course.load_from_lms(ACCESS_TOKEN)
         course = migrated_course.course
 
@@ -284,7 +284,7 @@ class CommandTests(CourseMigrationTestMixin, TestCase):
         with mock.patch.object(LMSPublisher, 'publish') as mock_publish:
             mock_publish.return_value = True
             call_command(
-                'migrate_course', self.course_id, access_token=ACCESS_TOKEN, site_domain=self.site.domain
+                'migrate_course', self.course_id, access_token=ACCESS_TOKEN, partner_code=self.partner.code
             )
 
             # Verify that the migrated course was not published back to the LMS
@@ -309,8 +309,7 @@ class CommandTests(CourseMigrationTestMixin, TestCase):
                 self.course_id,
                 access_token=ACCESS_TOKEN,
                 commit=True,
-                # `site_domain` is the option destination variable
-                site_domain=self.site.domain
+                partner_code=self.partner.code
             )
 
             # Verify that the migrated course was published back to the LMS
@@ -332,7 +331,7 @@ class CommandTests(CourseMigrationTestMixin, TestCase):
                     commit=True
                 )
 
-                l.check((LOGGER_NAME, 'ERROR', 'Courses cannot be migrated without providing a site domain.'))
+                l.check((LOGGER_NAME, 'ERROR', 'Courses cannot be migrated without providing a partner code.'))
                 # Verify that the migrated course was published back to the LMS
                 self.assertFalse(mock_publish.called)
 
@@ -347,7 +346,7 @@ class CommandTests(CourseMigrationTestMixin, TestCase):
                 self.course_id,
                 access_token=ACCESS_TOKEN,
                 commit=False,
-                site=self.site.domain
+                partner_code=self.partner.code
             )
 
             # Verify that the migrated course was published back to the LMS
@@ -365,7 +364,7 @@ class CommandTests(CourseMigrationTestMixin, TestCase):
                 self.course_id,
                 access_token=ACCESS_TOKEN,
                 commit=True,
-                site=self.site.domain
+                partner_code=self.partner.code
             )
 
             # Verify that the migrated course was published back to the LMS

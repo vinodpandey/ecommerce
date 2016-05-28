@@ -1,10 +1,10 @@
 """Order Utility Classes. """
 from __future__ import unicode_literals
+
 import logging
 
 from oscar.apps.order.utils import OrderCreator as OscarOrderCreator
 from oscar.core.loading import get_model
-from threadlocals.threadlocals import get_current_request
 
 from ecommerce.referrals.models import Referral
 
@@ -27,10 +27,6 @@ class OrderNumberGenerator(object):
             string: Order number
         """
         site = basket.site
-        if not site:
-            site = get_current_request().site
-            logger.warning('Basket [%d] is not associated with a Site. Defaulting to Site [%d].', basket.id, site.id)
-
         partner = site.siteconfiguration.partner
         return self.order_number_from_basket_id(partner, basket.id)
 
@@ -68,16 +64,11 @@ class OrderCreator(OscarOrderCreator):
         """
         Create an order model.
 
-        This override ensures the order's site is set to that of the basket. If the basket has no site, the default
-        site is used. The site value can be overridden by setting the `site` kwarg.
+        This override ensures the order's site is set to that of the basket. The site value can be overridden by
+        setting the `site` kwarg.
         """
 
-        # If a site was not passed in with extra_order_fields,
-        # use the basket's site if it has one, else get the site
-        # from the current request.
-        site = basket.site
-        if not site:
-            site = get_current_request().site
+        site = extra_order_fields.get('site ', basket.site)
 
         order_data = {'basket': basket,
                       'number': order_number,

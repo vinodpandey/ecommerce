@@ -58,7 +58,7 @@ class BasketMiddlewareTests(TestCase):
         self.assertEqual(basket2.status, Basket.MERGED)
 
     def test_get_basket_with_siteless_basket(self):
-        """ Verify the method should ignores baskets without a site. """
+        """ Verify the method ignores baskets without a site. """
         self.request.user = self.create_user()
         basket = BasketFactory(owner=self.request.user, site=self.site)
         siteless_basket = BasketFactory(owner=self.request.user, status=Basket.OPEN)

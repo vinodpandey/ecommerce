@@ -5,7 +5,7 @@ from oscar.test.newfactories import ProductAttributeValueFactory
 
 from ecommerce.core.constants import ISO_8601_FORMAT
 from ecommerce.extensions.api.serializers import OrderSerializer
-from ecommerce.extensions.test import factories
+from ecommerce.extensions.test.factories import create_order
 from ecommerce.tests.mixins import ThrottlingMixin
 
 JSON_CONTENT_TYPE = 'application/json'
@@ -21,7 +21,7 @@ class OrderDetailViewTestMixin(ThrottlingMixin):
         super(OrderDetailViewTestMixin, self).setUp()
 
         user = self.create_user()
-        self.order = factories.create_order(user=user)
+        self.order = create_order(user=user, site=self.site)
 
         # Add a product attribute to one of the order items
         ProductAttributeValueFactory(product=self.order.lines.first().product)

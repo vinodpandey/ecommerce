@@ -5,7 +5,6 @@ from django.conf import settings
 from django.core.urlresolvers import reverse
 from testfixtures import LogCapture
 
-from ecommerce.core.url_utils import get_lms_url
 from ecommerce.tests.testcases import TestCase
 
 LOGGER_NAME = 'ecommerce.courses.views'
@@ -72,7 +71,7 @@ class CourseAppViewTests(TestCase):
         ]
         providers.sort(key=lambda provider: provider['display_name'])
         provider_json = json.dumps(providers)
-        url = get_lms_url('/api/credit/v1/providers/')
+        url = self.site.siteconfiguration.build_lms_url('/api/credit/v1/providers/')
         httpretty.register_uri(httpretty.GET, url, body=provider_json, content_type='application/json')
 
         return providers, provider_json
@@ -83,7 +82,7 @@ class CourseAppViewTests(TestCase):
         def callback(request, uri, headers):  # pylint: disable=unused-argument
             return 500, headers, 'Failure!'
 
-        url = get_lms_url('/api/credit/v1/providers/')
+        url = self.site.siteconfiguration.build_lms_url('/api/credit/v1/providers/')
         httpretty.register_uri(httpretty.GET, url, body=callback, content_type='application/json')
 
     def test_login_required(self):

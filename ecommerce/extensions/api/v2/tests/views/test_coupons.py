@@ -7,11 +7,9 @@ from decimal import Decimal
 import ddt
 import httpretty
 import mock
-from django.conf import settings
 from django.core.urlresolvers import reverse
 from django.db.utils import IntegrityError
 from django.test import RequestFactory
-from edx_rest_api_client.client import EdxRestApiClient
 from oscar.apps.catalogue.categories import create_from_breadcrumbs
 from oscar.core.loading import get_class, get_model
 from oscar.test import factories
@@ -20,6 +18,7 @@ from rest_framework import status
 from ecommerce.coupons.tests.mixins import CatalogPreviewMockMixin, CouponMixin
 from ecommerce.courses.tests.factories import CourseFactory
 from ecommerce.extensions.api.constants import APIConstants as AC
+from ecommerce.extensions.api.v2.tests.views import JSON_CONTENT_TYPE
 from ecommerce.extensions.api.v2.views.coupons import CouponViewSet
 from ecommerce.extensions.catalogue.tests.mixins import CourseCatalogTestMixin
 from ecommerce.extensions.voucher.models import CouponVouchers
@@ -104,13 +103,20 @@ class CouponViewSetTest(CouponMixin, CourseCatalogTestMixin, TestCase):
         request.site = self.site
         request.COOKIES = {}
 
-        response = CouponViewSet().create(request)
+        # TODO Stop accessing the view in this manner!
+        view = CouponViewSet()
+        view.request = request
+        response = view.create(request)
 
         self.assertEqual(response.status_code, 200)
-        self.assertDictEqual(
-            response.data,
-            {'payment_data': {'payment_processor_name': 'Invoice'}, 'id': 1, 'order': 1, 'coupon_id': 3}
-        )
+        order = Order.objects.latest()
+        expected = {
+            'payment_data': {'payment_processor_name': 'Invoice'},
+            'order': order.id,
+            'id': order.basket.id,
+            'coupon_id': Product.objects.latest().id,
+        }
+        self.assertDictEqual(response.data, expected)
 
         coupon = Product.objects.get(title=title)
         self.assertEqual(
@@ -208,14 +214,20 @@ class CouponViewSetTest(CouponMixin, CourseCatalogTestMixin, TestCase):
         """Test the order creation."""
         self.create_coupon(partner=self.partner)
 
-        self.assertEqual(self.response_data[AC.KEYS.BASKET_ID], 1)
-        self.assertEqual(self.response_data[AC.KEYS.ORDER], 1)
-        self.assertEqual(self.response_data[AC.KEYS.PAYMENT_DATA][AC.KEYS.PAYMENT_PROCESSOR_NAME], 'Invoice')
+        order = Order.objects.latest()
+        expected = {
+            AC.KEYS.BASKET_ID: order.basket.id,
+            AC.KEYS.ORDER: order.id,
+            AC.KEYS.PAYMENT_DATA: {
+                AC.KEYS.PAYMENT_PROCESSOR_NAME: 'Invoice'
+            }
+        }
 
+        self.assertDictContainsSubset(expected, self.response_data)
         self.assertEqual(Order.objects.count(), 1)
-        self.assertEqual(Order.objects.first().status, 'Complete')
-        self.assertEqual(Order.objects.first().total_incl_tax, 100)
-        self.assertEqual(Basket.objects.first().status, 'Submitted')
+        self.assertEqual(order.status, 'Complete')
+        self.assertEqual(order.total_incl_tax, 100)
+        self.assertEqual(order.basket.status, 'Submitted')
 
     def test_create_update_data_dict(self):
         """Test the update data dictionary"""
@@ -266,14 +278,17 @@ class CouponViewSetFunctionalTest(CouponMixin, CourseCatalogTestMixin, CatalogPr
 
     def setUp(self):
         super(CouponViewSetFunctionalTest, self).setUp()
+
         self.user = self.create_user(is_staff=True)
         self.client.login(username=self.user.username, password=self.password)
-        self.create_course_and_seat(course_id='edx/Demo_Course1/DemoX', price=50)
-        self.create_course_and_seat(course_id='edx/Demo_Course2/DemoX', price=100)
+
+        __, seat1 = self.create_course_and_seat(price=50, partner=self.partner)
+        __, seat2 = self.create_course_and_seat(price=100, partner=self.partner)
+
         self.data = {
             'title': 'Test coupon',
             'client_username': 'TestX',
-            'stock_record_ids': [1, 2],
+            'stock_record_ids': [seat1.stockrecords.first().id, seat2.stockrecords.first().id],
             'start_date': '2015-01-01',
             'end_date': '2020-01-01',
             'code': '',
@@ -284,16 +299,20 @@ class CouponViewSetFunctionalTest(CouponMixin, CourseCatalogTestMixin, CatalogPr
             'price': 100,
             'category_ids': [self.category.id],
         }
-        self.response = self.client.post(COUPONS_LINK, data=self.data, format='json')
+        self.response = self.client.post(COUPONS_LINK, json.dumps(self.data), JSON_CONTENT_TYPE)
 
     def test_response(self):
         """Test the response data given after the order was created."""
         self.assertEqual(self.response.status_code, 200)
         response_data = json.loads(self.response.content)
-        self.assertEqual(response_data[AC.KEYS.COUPON_ID], 5)
-        self.assertEqual(response_data[AC.KEYS.BASKET_ID], 1)
-        self.assertEqual(response_data[AC.KEYS.ORDER], 1)
-        self.assertEqual(response_data[AC.KEYS.PAYMENT_DATA][AC.KEYS.PAYMENT_PROCESSOR_NAME], 'Invoice')
+        order = Order.objects.latest()
+        expected = {
+            'payment_data': {'payment_processor_name': 'Invoice'},
+            'order': order.id,
+            'id': order.basket.id,
+            'coupon_id': Product.objects.latest().id,
+        }
+        self.assertDictEqual(response_data, expected)
 
     def test_order(self):
         """Test the order data after order creation."""
@@ -304,11 +323,8 @@ class CouponViewSetFunctionalTest(CouponMixin, CourseCatalogTestMixin, CatalogPr
 
     def test_authentication_required(self):
         """Test that a guest cannot access the view."""
-        response = self.client.post(COUPONS_LINK, data=self.data)
-        self.assertEqual(response.status_code, 200)
-
         self.client.logout()
-        response = self.client.post(COUPONS_LINK, data=self.data)
+        response = self.client.post(COUPONS_LINK, json.dumps(self.data), JSON_CONTENT_TYPE)
         self.assertEqual(response.status_code, 401)
 
     def test_authorization_required(self):
@@ -316,7 +332,7 @@ class CouponViewSetFunctionalTest(CouponMixin, CourseCatalogTestMixin, CatalogPr
         user = self.create_user(is_staff=False)
         self.client.login(username=user.username, password=self.password)
 
-        response = self.client.post(COUPONS_LINK, data=self.data)
+        response = self.client.post(COUPONS_LINK, json.dumps(self.data), JSON_CONTENT_TYPE)
         self.assertEqual(response.status_code, 403)
 
     def test_list_coupons(self):
@@ -493,28 +509,24 @@ class CouponViewSetFunctionalTest(CouponMixin, CourseCatalogTestMixin, CatalogPr
         })
 
         with self.assertRaises(NotImplementedError):
-            self.client.post(COUPONS_LINK, data=self.data, format='json')
+            self.client.post(COUPONS_LINK, json.dumps(self.data), JSON_CONTENT_TYPE)
 
     @ddt.data('audit', 'honor')
     def test_restricted_course_mode(self, mode):
         """Test that an exception is raised when a black-listed course mode is used."""
         course = CourseFactory(id='black/list/mode')
         seat = course.create_or_update_seat(mode, False, 0, self.partner)
+
         # Seats derived from a migrated "audit" mode do not have a certificate_type attribute.
         if mode == 'audit':
             seat = ProductFactory()
+
         self.data.update({'stock_record_ids': [StockRecord.objects.get(product=seat).id]})
-        response = self.client.post(COUPONS_LINK, data=self.data, format='json')
+        response = self.client.post(COUPONS_LINK, json.dumps(self.data), JSON_CONTENT_TYPE)
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
     @httpretty.activate
-    @mock.patch(
-        'ecommerce.coupons.utils.get_course_catalog_api_client',
-        mock.Mock(return_value=EdxRestApiClient(
-            settings.COURSE_CATALOG_API_URL,
-            jwt='auth-token'
-        ))
-    )
+    @mock.patch('ecommerce.core.models.SiteConfiguration.access_token', mock.Mock(return_value='auth-token'))
     def test_dynamic_catalog_coupon(self):
         """ Verify dynamic range values are returned. """
         catalog_query = 'key:*'
@@ -528,7 +540,7 @@ class CouponViewSetFunctionalTest(CouponMixin, CourseCatalogTestMixin, CatalogPr
         course, seat = self.create_course_and_seat(course_id='dynamic/catalog/coupon')
         self.mock_dynamic_catalog_course_runs_api(query=catalog_query, course_run=course)
 
-        response = self.client.post(COUPONS_LINK, json.dumps(self.data), 'application/json')
+        response = self.client.post(COUPONS_LINK, json.dumps(self.data), JSON_CONTENT_TYPE)
         coupon_id = json.loads(response.content)['coupon_id']
         details_response = self.client.get(reverse('api:v2:coupons-detail', args=[coupon_id]))
         detail = json.loads(details_response.content)

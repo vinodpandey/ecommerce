@@ -1,14 +1,11 @@
 import logging
 
+import requests
+import waffle
 from django.conf import settings
 from django.contrib import messages
 from django.utils.translation import ugettext_lazy as _
 from oscar.apps.dashboard.users.views import UserDetailView as CoreUserDetailView
-import requests
-import waffle
-
-from ecommerce.core.url_utils import get_lms_enrollment_api_url
-
 
 logger = logging.getLogger(__name__)
 
@@ -26,7 +23,7 @@ class UserDetailView(CoreUserDetailView):
         """Retrieve the enrollments for the User being viewed."""
         username = self.object.username
         try:
-            url = '{}?user={}'.format(get_lms_enrollment_api_url(), username)
+            url = '{}?user={}'.format(self.request.site.siteconfiguration.enrollment_api_url, username)
             timeout = settings.ENROLLMENT_FULFILLMENT_TIMEOUT
 
             headers = {

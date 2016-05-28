@@ -2,6 +2,7 @@ import ddt
 from oscar.test import factories
 
 from ecommerce.extensions.fulfillment.status import ORDER
+from ecommerce.extensions.test.factories import create_basket
 from ecommerce.tests.testcases import TestCase
 
 
@@ -33,7 +34,7 @@ class OrderTests(TestCase):
 
         product_class = u'Coupon'
         product = factories.create_product(product_class=product_class)
-        basket = factories.create_basket(empty=True)
+        basket = create_basket(self.site, empty=True)
         factories.create_stockrecord(product, num_in_stock=1)
         basket.add_product(product)
         order = factories.create_order(basket=basket)

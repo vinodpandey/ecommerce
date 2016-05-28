@@ -14,7 +14,6 @@ from django.test import override_settings
 from oscar.apps.payment.exceptions import UserCancelled, TransactionDeclined, GatewayError
 from oscar.core.loading import get_model
 from oscar.test import factories
-from threadlocals.threadlocals import get_current_request
 
 from ecommerce.core.constants import ISO_8601_FORMAT
 from ecommerce.extensions.payment.exceptions import (
@@ -23,6 +22,7 @@ from ecommerce.extensions.payment.exceptions import (
 from ecommerce.extensions.payment.processors.cybersource import Cybersource, suds_response_to_dict
 from ecommerce.extensions.payment.tests.mixins import CybersourceMixin
 from ecommerce.extensions.payment.tests.processors.mixins import PaymentProcessorTestCaseMixin
+from ecommerce.extensions.test.factories import create_basket
 from ecommerce.tests.testcases import TestCase
 
 PaymentEventType = get_model('order', 'PaymentEventType')
@@ -58,9 +58,8 @@ class CybersourceTests(CybersourceMixin, PaymentProcessorTestCaseMixin, TestCase
             'amount': unicode(self.basket.total_incl_tax),
             'currency': self.basket.currency,
             'consumer_id': self.basket.owner.username,
-            'override_custom_receipt_page': '{}?orderNum={}'.format(self.processor.receipt_page_url,
-                                                                    self.basket.order_number),
-            'override_custom_cancel_page': self.processor.cancel_page_url,
+            'override_custom_receipt_page': self.processor.receipt_page_url(self.basket.order_number),
+            'override_custom_cancel_page': self.processor.cancel_page_url(),
             'merchant_defined_data1': self.course.id,
             'merchant_defined_data2': self.CERTIFICATE_TYPE,
         }
@@ -68,7 +67,7 @@ class CybersourceTests(CybersourceMixin, PaymentProcessorTestCaseMixin, TestCase
         if include_level_2_3_details:
             expected.update({
                 'line_item_count': self.basket.lines.count(),
-                'amex_data_taa1': get_current_request().site.name,
+                'amex_data_taa1': self.basket.site.name,
                 'purchasing_level': '3',
                 'user_po': 'BLANK',
             })
@@ -104,7 +103,7 @@ class CybersourceTests(CybersourceMixin, PaymentProcessorTestCaseMixin, TestCase
         # Patch the datetime object so that we can validate the signed_date_time field
         with mock.patch.object(Cybersource, 'utcnow', return_value=self.PI_DAY):
             # NOTE (CCB): Instantiate a new processor object to ensure we reload any overridden settings.
-            actual = self.processor_class().get_transaction_parameters(self.basket)
+            actual = self.processor_class(self.site).get_transaction_parameters(self.basket)
 
         expected = self.get_expected_transaction_parameters(actual['transaction_uuid'], include_level_2_3_details)
         self.assertDictContainsSubset(expected, actual)
@@ -211,7 +210,7 @@ class CybersourceTests(CybersourceMixin, PaymentProcessorTestCaseMixin, TestCase
         self.assertEqual(get_single_seat(self.basket), self.product)
 
         # finds the first seat added, when there's more than one.
-        basket = factories.create_basket(empty=True)
+        basket = create_basket(self.site, empty=True)
         other_seat = factories.ProductFactory(
             product_class=self.seat_product_class,
             stockrecords__price_currency='USD',
@@ -222,7 +221,7 @@ class CybersourceTests(CybersourceMixin, PaymentProcessorTestCaseMixin, TestCase
         self.assertEqual(get_single_seat(basket), self.product)
 
         # finds the seat when there's a mixture of product classes.
-        basket = factories.create_basket(empty=True)
+        basket = create_basket(self.site, empty=True)
         other_product = factories.ProductFactory(
             stockrecords__price_currency='USD',
             stockrecords__partner__short_code='test2',
@@ -233,12 +232,12 @@ class CybersourceTests(CybersourceMixin, PaymentProcessorTestCaseMixin, TestCase
         self.assertNotEqual(get_single_seat(basket), other_product)
 
         # returns None when there's no seats.
-        basket = factories.create_basket(empty=True)
+        basket = create_basket(self.site, empty=True)
         basket.add_product(other_product)
         self.assertIsNone(get_single_seat(basket))
 
         # returns None for an empty basket.
-        basket = factories.create_basket(empty=True)
+        basket = create_basket(self.site, empty=True)
         self.assertIsNone(get_single_seat(basket))
 
     @httpretty.activate

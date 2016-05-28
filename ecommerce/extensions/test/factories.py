@@ -3,6 +3,8 @@ from datetime import datetime
 from django.utils.timezone import now
 from oscar.test.factories import *  # pylint:disable=wildcard-import,unused-wildcard-import
 
+from ecommerce.tests.factories import SiteConfigurationFactory
+
 Benefit = get_model('offer', 'Benefit')
 Catalog = get_model('catalogue', 'Catalog')
 Voucher = get_model('voucher', 'Voucher')
@@ -11,12 +13,14 @@ OrderNumberGenerator = get_class('order.utils', 'OrderNumberGenerator')
 
 
 def create_order(number=None, basket=None, user=None, shipping_address=None,  # pylint:disable=function-redefined
-                 shipping_method=None, billing_address=None, total=None, **kwargs):
+                 shipping_method=None, billing_address=None, total=None, site=None, **kwargs):
     """
     Helper function for creating an order for testing
     """
+    site = site or SiteConfigurationFactory().site
+
     if not basket:
-        basket = Basket.objects.create()
+        basket = Basket.objects.create(site=site)
         basket.strategy = strategy.Default()
         product = create_product()
         create_stockrecord(
@@ -74,3 +78,13 @@ def prepare_voucher(code='COUPONTEST', _range=None, start_datetime=None, end_dat
         offer = ConditionalOfferFactory(benefit=benefit, condition=condition)
     voucher.offers.add(offer)
     return voucher, product
+
+
+def create_basket(site, empty=False):  # pylint: disable=function-redefined
+    basket = Basket.objects.create(site=site)
+    basket.strategy = strategy.Default()
+    if not empty:
+        product = create_product()
+        create_stockrecord(product, num_in_stock=2)
+        basket.add_product(product)
+    return basket

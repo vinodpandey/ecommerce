@@ -13,7 +13,6 @@ from django.core.urlresolvers import reverse
 from django.utils import timezone
 from waffle.models import Switch
 
-from ecommerce.core.url_utils import get_lms_url
 from ecommerce.courses.tests.factories import CourseFactory
 from ecommerce.extensions.catalogue.tests.mixins import CourseCatalogTestMixin
 from ecommerce.extensions.payment.helpers import get_processor_class
@@ -36,8 +35,8 @@ class CheckoutPageTest(CourseCatalogTestMixin, TestCase, JwtMixin):
         self.provider = 'ASU'
         self.price = 100
         self.credit_hours = 2
-        self.eligibility_url = get_lms_url('/api/credit/v1/eligibility/')
-        self.provider_url = get_lms_url('/api/credit/v1/providers/')
+        self.eligibility_url = self.site.siteconfiguration.build_lms_url('/api/credit/v1/eligibility/')
+        self.provider_url = self.site.siteconfiguration.build_lms_url('/api/credit/v1/providers/')
         self.course = CourseFactory(thumbnail_url='http://www.edx.org/course.jpg')
 
         self.provider_data = [

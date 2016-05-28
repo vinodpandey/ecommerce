@@ -2,17 +2,14 @@
 from __future__ import unicode_literals
 
 from decimal import Decimal
-import logging
 
 from django.conf import settings
 from django.contrib.auth.decorators import login_required
-from django.core.urlresolvers import reverse
 from django.utils.decorators import method_decorator
 from django.views.generic import RedirectView
 from oscar.apps.checkout.views import *  # pylint: disable=wildcard-import, unused-wildcard-import
 from oscar.core.loading import get_class, get_model
 
-from ecommerce.core.url_utils import get_lms_url
 from ecommerce.extensions.checkout.exceptions import BasketNotFreeError
 from ecommerce.extensions.checkout.mixins import EdxOrderPlacementMixin
 
@@ -46,7 +43,7 @@ class FreeCheckoutView(EdxOrderPlacementMixin, RedirectView):
             order = self.place_free_order(basket)
 
             receipt_path = '{}?orderNum={}'.format(settings.RECEIPT_PAGE_PATH, order.number)
-            url = get_lms_url(receipt_path)
+            url = self.request.site.siteconfiguration.build_lms_url(receipt_path)
         else:
             # If a user's basket is empty redirect the user to the basket summary
             # page which displays the appropriate message for empty baskets.

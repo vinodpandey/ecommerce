@@ -1,15 +1,17 @@
 """ This command publish the courses to LMS."""
 from __future__ import unicode_literals
+
 import logging
-from optparse import make_option
 import os
+from optparse import make_option
 
 from django.core.management import BaseCommand, CommandError
+from oscar.core.loading import get_model
 
 from ecommerce.courses.models import Course
 
-
 logger = logging.getLogger(__name__)
+Partner = get_model('partner', 'Partner')
 
 
 class Command(BaseCommand):
@@ -18,12 +20,17 @@ class Command(BaseCommand):
     help = 'Publish the courses to LMS'
     option_list = BaseCommand.option_list + (
         make_option(
-            '--course_ids_file',
+            '--course-ids-file',
             action='store',
             dest='course_ids_file',
             default=None,
             help='Path to file to read courses from.'
         ),
+        make_option(
+            '--partner-code',
+            action='store',
+            dest='partner_code',
+            help='Partner code for the Site whose courses should be updated.'),
     )
 
     ch = logging.StreamHandler()
@@ -33,6 +40,8 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         failed = 0
         course_ids_file = options['course_ids_file']
+        site = Partner.objects.get(code__iexact=options['partner_code']).siteconfiguration_set.first().site
+
         if not course_ids_file or not os.path.exists(course_ids_file):
             raise CommandError("Pass the correct absolute path to course ids file as --course_ids_file argument.")
 
@@ -44,7 +53,7 @@ class Command(BaseCommand):
                 try:
                     course_id = course_id.strip()
                     course = Course.objects.get(id=course_id)
-                    publishing_error = course.publish_to_lms()
+                    publishing_error = course.publish_to_lms(site)
                     if publishing_error:
                         failed += 1
                         logger.error(

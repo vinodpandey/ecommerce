@@ -77,7 +77,7 @@ class CourseTests(CourseCatalogTestMixin, TestCase):
         """ Verify the method publishes data to LMS. """
         course = CourseFactory()
         with mock.patch.object(LMSPublisher, 'publish') as mock_publish:
-            course.publish_to_lms()
+            course.publish_to_lms(self.site)
             self.assertTrue(mock_publish.called)
 
     def test_save_creates_parent_seat(self):
@@ -223,7 +223,7 @@ class CourseTests(CourseCatalogTestMixin, TestCase):
         professional_product_no_verification = course.create_or_update_seat('professional', False, 0, self.partner)
         self.assertEqual(course.products.count(), 2)
 
-        basket = BasketFactory(owner=user)
+        basket = BasketFactory(owner=user, site=self.site)
         basket.add_product(professional_product_no_verification)
         create_order(basket=basket, user=user)
         course.create_or_update_seat('professional', True, 0, self.partner)

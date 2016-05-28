@@ -1,8 +1,7 @@
 from django.test import override_settings
-from threadlocals.threadlocals import get_current_request
+from django.test.client import RequestFactory
 
 from ecommerce.core.context_processors import core
-from ecommerce.core.url_utils import get_lms_dashboard_url, get_lms_url
 from ecommerce.tests.testcases import TestCase
 
 SUPPORT_URL = 'example.com'
@@ -11,12 +10,14 @@ SUPPORT_URL = 'example.com'
 class CoreContextProcessorTests(TestCase):
     @override_settings(SUPPORT_URL=SUPPORT_URL)
     def test_core(self):
-        request = get_current_request()
+        request = RequestFactory()
+        request.site = self.site
+
         self.assertDictEqual(
             core(request),
             {
-                'lms_base_url': get_lms_url(),
-                'lms_dashboard_url': get_lms_dashboard_url(),
+                'lms_base_url': request.site.siteconfiguration.build_lms_url(),
+                'lms_dashboard_url': request.site.siteconfiguration.student_dashboard_url,
                 'platform_name': request.site.name,
                 'support_url': SUPPORT_URL
             }

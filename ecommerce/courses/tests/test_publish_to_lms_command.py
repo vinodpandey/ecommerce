@@ -49,7 +49,7 @@ class PublishCoursesToLMSTests(CourseCatalogTestMixin, TransactionTestCase):
         """ Verify command raises the CommandError for invalid file path. """
 
         with self.assertRaises(CommandError):
-            call_command('publish_to_lms', course_ids_file=course_ids_file)
+            call_command('publish_to_lms', course_ids_file=course_ids_file, partner_code=self.partner.code)
 
     def test_invalid_course_id(self):
         """ Verify invalid course_id fails. """
@@ -74,7 +74,7 @@ class PublishCoursesToLMSTests(CourseCatalogTestMixin, TransactionTestCase):
             )
         )
         with LogCapture(LOGGER_NAME) as lc:
-            call_command('publish_to_lms', course_ids_file=self.tmp_file_path)
+            call_command('publish_to_lms', course_ids_file=self.tmp_file_path, partner_code=self.partner.code)
             lc.check(*expected)
 
     def test_course_publish_successfully(self):
@@ -106,10 +106,12 @@ class PublishCoursesToLMSTests(CourseCatalogTestMixin, TransactionTestCase):
         with mock.patch.object(Course, 'publish_to_lms', autospec=True) as mock_publish:
             mock_publish.return_value = None
             with LogCapture(LOGGER_NAME) as lc:
-                call_command('publish_to_lms', course_ids_file=self.tmp_file_path)
+                call_command('publish_to_lms', course_ids_file=self.tmp_file_path, partner_code=self.partner.code)
                 lc.check(*expected)
+
         # Check that the mocked function was called twice.
-        self.assertListEqual(mock_publish.call_args_list, [call(self.course), call(second_course)])
+        expected_call_args = [call(self.course, self.site), call(second_course, self.site)]
+        self.assertListEqual(mock_publish.call_args_list, expected_call_args)
 
     def test_course_publish_failed(self):
         """ Verify failed courses are logged."""
@@ -135,9 +137,9 @@ class PublishCoursesToLMSTests(CourseCatalogTestMixin, TransactionTestCase):
         with mock.patch.object(Course, 'publish_to_lms') as mock_publish:
             mock_publish.return_value = error_msg
             with LogCapture(LOGGER_NAME) as lc:
-                call_command('publish_to_lms', course_ids_file=self.tmp_file_path)
+                call_command('publish_to_lms', course_ids_file=self.tmp_file_path, partner_code=self.partner.code)
                 lc.check(*expected)
-            mock_publish.assert_called_once_with()
+            mock_publish.assert_called_once_with(self.site)
 
     def test_unicode_file_name(self):
         """ Verify the unicode files name are read correctly."""
@@ -163,8 +165,8 @@ class PublishCoursesToLMSTests(CourseCatalogTestMixin, TransactionTestCase):
         with mock.patch.object(Course, 'publish_to_lms') as mock_publish:
             mock_publish.return_value = None
             with LogCapture(LOGGER_NAME) as lc:
-                call_command('publish_to_lms', course_ids_file=unicode_file)
+                call_command('publish_to_lms', course_ids_file=unicode_file, partner_code=self.partner.code)
                 lc.check(*expected)
 
-        mock_publish.assert_called_once_with()
+        mock_publish.assert_called_once_with(self.site)
         os.remove(unicode_file)

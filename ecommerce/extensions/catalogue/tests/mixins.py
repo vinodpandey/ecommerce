@@ -47,8 +47,8 @@ class CourseCatalogTestMixin(object):
             The created course and seat.
         """
 
-        if not partner:
-            partner = PartnerFactory()
+        partner = partner or PartnerFactory()
+
         if not course_id:
             course = CourseFactory()
         else:

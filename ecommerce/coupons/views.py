@@ -17,7 +17,6 @@ from django.views.generic import TemplateView, View
 from edx_rest_api_client.exceptions import SlumberHttpBaseException
 from oscar.core.loading import get_class, get_model
 
-from ecommerce.core.url_utils import get_ecommerce_url, get_lms_url
 from ecommerce.core.views import StaffOnlyMixin
 from ecommerce.courses.utils import get_course_info_from_lms
 from ecommerce.extensions.api import exceptions
@@ -143,7 +142,7 @@ class CouponOfferView(TemplateView):
                     return {
                         'error': _('Could not get course information. [{error}]'.format(error=e)),
                     }
-                course['image_url'] = get_lms_url(course['media']['course_image']['uri'])
+                course['image_url'] = site_configuration.build_lms_url(course['media']['course_image']['uri'])
                 benefit = voucher.offers.first().benefit
                 # Note (multi-courses): fix this to work for all stock records / courses.
                 if benefit.range.catalog:
@@ -221,7 +220,7 @@ class CouponRedeemView(EdxOrderPlacementMixin, View):
         else:
             return HttpResponseRedirect(reverse('basket:summary'))
 
-        return HttpResponseRedirect(get_lms_url(''))
+        return HttpResponseRedirect(request.site.siteconfiguration.build_lms_url(''))
 
 
 class EnrollmentCodeCsvView(View):
@@ -272,7 +271,7 @@ class EnrollmentCodeCsvView(View):
         response = HttpResponse(content_type='text/csv')
         response['Content-Disposition'] = 'attachment; filename={filename}'.format(filename=file_name)
 
-        redeem_url = get_ecommerce_url(reverse('coupons:offer'))
+        redeem_url = request.site.siteconfiguration.build_ecommerce_url(reverse('coupons:offer'))
         voucher_field_names = ('Code', 'Redemption URL')
         voucher_writer = csv.DictWriter(response, fieldnames=voucher_field_names)
 

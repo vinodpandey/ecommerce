@@ -16,7 +16,6 @@ import requests
 from requests.exceptions import ConnectionError, Timeout
 
 from ecommerce.core.constants import ENROLLMENT_CODE_PRODUCT_CLASS_NAME
-from ecommerce.core.url_utils import get_ecommerce_url, get_lms_enrollment_api_url, get_lms_url
 from ecommerce.courses.models import Course
 from ecommerce.courses.utils import mode_for_seat
 from ecommerce.extensions.analytics.utils import audit_log, parse_tracking_context
@@ -105,8 +104,8 @@ class EnrollmentFulfillmentModule(BaseFulfillmentModule):
     Allows the enrollment of a student via purchase of a 'seat'.
     """
 
-    def _post_to_enrollment_api(self, data, user):
-        enrollment_api_url = get_lms_enrollment_api_url()
+    def _post_to_enrollment_api(self, site, data, user):
+        enrollment_api_url = site.siteconfiguration.enrollment_api_url
         timeout = settings.ENROLLMENT_FULFILLMENT_TIMEOUT
         headers = {
             'Content-Type': 'application/json',
@@ -208,7 +207,7 @@ class EnrollmentFulfillmentModule(BaseFulfillmentModule):
                     }
                 )
             try:
-                response = self._post_to_enrollment_api(data, user=order.user)
+                response = self._post_to_enrollment_api(order.site, data, order.user)
 
                 if response.status_code == status.HTTP_200_OK:
                     line.set_status(LINE.COMPLETE)
@@ -263,7 +262,7 @@ class EnrollmentFulfillmentModule(BaseFulfillmentModule):
                 },
             }
 
-            response = self._post_to_enrollment_api(data, user=line.order.user)
+            response = self._post_to_enrollment_api(line.order.site, data, line.order.user)
 
             if response.status_code == status.HTTP_200_OK:
                 audit_log(
@@ -446,18 +445,23 @@ class EnrollmentCodeFulfillmentModule(BaseFulfillmentModule):
         # Note (multi-courses): Change from a course_name to a list of course names.
         product = order.lines.first().product
         course = Course.objects.get(id=product.attr.course_key)
+        site_configuration = order.site.siteconfiguration
+
+        csv_download_path = reverse('coupons:enrollment_code_csv', args=[order.number])
+        path = '{}?orderNum={}'.format(settings.RECEIPT_PAGE_PATH, order.number)
+        receipt_url = site_configuration.build_lms_url(path)
         send_notification(
             order.user,
             'ORDER_WITH_CSV',
             context={
-                'contact_url': get_lms_url('/contact'),
+                'contact_url': site_configuration.build_lms_url('/contact'),
                 'course_name': course.name,
-                'download_csv_link': get_ecommerce_url(reverse('coupons:enrollment_code_csv', args=[order.number])),
+                'download_csv_link': site_configuration.build_ecommerce_url(csv_download_path),
                 'enrollment_code_title': product.title,
                 'order_number': order.number,
                 'partner_name': order.site.siteconfiguration.partner.name,
-                'lms_url': get_lms_url(),
-                'receipt_page_url': get_lms_url('{}?orderNum={}'.format(settings.RECEIPT_PAGE_PATH, order.number)),
+                'lms_url': site_configuration.build_lms_url(),
+                'receipt_page_url': receipt_url,
             },
             site=order.site
         )

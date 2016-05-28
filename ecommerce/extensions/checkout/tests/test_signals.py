@@ -1,30 +1,20 @@
+import httpretty
 from django.conf import settings
 from django.core import mail
-from django.test import RequestFactory
-import httpretty
-import mock
-from oscar.test import factories
 from oscar.test.newfactories import BasketFactory
-from threadlocals.threadlocals import get_current_request
 
 from ecommerce.core.tests import toggle_switch
-from ecommerce.core.url_utils import get_lms_url
 from ecommerce.courses.models import Course
 from ecommerce.extensions.catalogue.tests.mixins import CourseCatalogTestMixin
 from ecommerce.extensions.checkout.signals import send_course_purchase_email
-from ecommerce.tests.factories import SiteConfigurationFactory
+from ecommerce.extensions.test.factories import create_order
 from ecommerce.tests.testcases import TestCase
 
 
 class SignalTests(CourseCatalogTestMixin, TestCase):
-
     def setUp(self):
         super(SignalTests, self).setUp()
-        self.request = RequestFactory()
         self.user = self.create_user()
-        self.request.user = self.user
-        self.site_configuration = SiteConfigurationFactory(partner__name='Tester', from_email='from@example.com')
-        self.request.site = self.site_configuration.site
 
     @httpretty.activate
     def test_post_checkout_callback(self):
@@ -33,7 +23,7 @@ class SignalTests(CourseCatalogTestMixin, TestCase):
         to fulfill the newly-placed order and send receipt email.
         """
         httpretty.register_uri(
-            httpretty.GET, get_lms_url('api/credit/v1/providers/ASU'),
+            httpretty.GET, self.site.siteconfiguration.build_lms_url('api/credit/v1/providers/ASU'),
             body='{"display_name": "Hogwarts"}',
             content_type="application/json"
         )
@@ -41,15 +31,16 @@ class SignalTests(CourseCatalogTestMixin, TestCase):
         course = Course.objects.create(id='edX/DemoX/Demo_Course', name='Demo Course')
         seat = course.create_or_update_seat('credit', False, 50, self.partner, 'ASU', None, 2)
 
-        basket = BasketFactory()
+        basket = BasketFactory(site=self.site)
         basket.add_product(seat, 1)
-        order = factories.create_order(number=1, basket=basket, user=self.user)
-        with mock.patch('threadlocals.threadlocals.get_current_request') as mock_gcr:
-            mock_gcr.return_value = self.request
-            send_course_purchase_email(None, order=order)
+        order = create_order(number=1, basket=basket, user=self.user)
+        send_course_purchase_email(None, order=order)
         self.assertEqual(len(mail.outbox), 1)
-        self.assertEqual(mail.outbox[0].from_email, self.site_configuration.from_email)
+        self.assertEqual(mail.outbox[0].from_email, self.site.siteconfiguration.from_email)
         self.assertEqual(mail.outbox[0].subject, 'Order Receipt')
+
+        path = '{}?orderNum={}'.format(settings.RECEIPT_PAGE_PATH, order.number)
+        receipt_url = self.site.siteconfiguration.build_lms_url(path)
         self.assertEqual(
             mail.outbox[0].body,
             '\nPayment confirmation for: {course_title}'
@@ -71,7 +62,7 @@ class SignalTests(CourseCatalogTestMixin, TestCase):
                 full_name=self.user.get_full_name(),
                 credit_hours=2,
                 credit_provider='Hogwarts',
-                platform_name=get_current_request().site.name,
-                receipt_url=get_lms_url('{}?orderNum={}'.format(settings.RECEIPT_PAGE_PATH, order.number))
+                platform_name=order.site.name,
+                receipt_url=receipt_url
             )
         )

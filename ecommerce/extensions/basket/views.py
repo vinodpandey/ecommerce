@@ -3,7 +3,6 @@ from __future__ import unicode_literals
 import logging
 
 from django.http import HttpResponseBadRequest, HttpResponseRedirect
-from django.core.urlresolvers import reverse
 from django.utils.translation import ugettext_lazy as _
 from requests.exceptions import ConnectionError, Timeout
 from opaque_keys.edx.keys import CourseKey
@@ -12,7 +11,6 @@ from edx_rest_api_client.client import EdxRestApiClient
 from slumber.exceptions import SlumberBaseException
 
 from ecommerce.core.constants import ENROLLMENT_CODE_PRODUCT_CLASS_NAME, SEAT_PRODUCT_CLASS_NAME
-from ecommerce.core.url_utils import get_lms_url, get_lms_enrollment_base_api_url
 from ecommerce.coupons.views import get_voucher_from_code
 from ecommerce.courses.utils import get_course_info_from_lms, mode_for_seat
 from ecommerce.extensions.analytics.utils import prepare_analytics_data
@@ -49,7 +47,7 @@ class BasketSingleItemView(View):
             course_key = product.attr.course_key
 
             api = EdxRestApiClient(
-                get_lms_enrollment_base_api_url(),
+                request.site.siteconfiguration.build_lms_url('/api/enrollment/v1'),
                 oauth_access_token=request.user.access_token,
                 append_slash=False
             )
@@ -118,7 +116,7 @@ class BasketSummaryView(BasketView):
             short_description = None
             try:
                 course = get_course_info_from_lms(course_key)
-                image_url = get_lms_url(course['media']['course_image']['uri'])
+                image_url = self.request.site.siteconfiguration.build_lms_url(course['media']['course_image']['uri'])
                 short_description = course['short_description']
                 course_name = course['name']
             except (ConnectionError, SlumberBaseException, Timeout):
@@ -167,7 +165,7 @@ class BasketSummaryView(BasketView):
         context.update({
             'free_basket': context['order_total'].incl_tax == 0,
             'payment_processors': self.request.site.siteconfiguration.get_payment_processors(),
-            'homepage_url': get_lms_url(''),
+            'homepage_url': self.request.site.siteconfiguration.build_lms_url(''),
             'formset_lines_data': zip(formset, lines_data),
             'is_verification_required': is_verification_required,
             'min_seat_quantity': 1,

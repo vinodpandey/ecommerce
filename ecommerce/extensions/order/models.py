@@ -10,6 +10,9 @@ from ecommerce.extensions.fulfillment.status import ORDER
 class Order(AbstractOrder):
     history = HistoricalRecords()
 
+    class Meta(AbstractOrder.Meta):
+        get_latest_by = 'date_placed'
+
     @property
     def is_fulfillable(self):
         """Returns a boolean indicating if order can be fulfilled."""

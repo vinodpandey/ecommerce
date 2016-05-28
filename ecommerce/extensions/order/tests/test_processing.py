@@ -4,6 +4,7 @@ from oscar.test import factories
 from ecommerce.extensions.fulfillment.signals import SHIPPING_EVENT_NAME
 from ecommerce.extensions.fulfillment.status import LINE
 from ecommerce.extensions.order.processing import EventHandler
+from ecommerce.extensions.test.factories import create_basket
 from ecommerce.tests.testcases import TestCase
 
 ShippingEventType = get_model('order', 'ShippingEventType')
@@ -52,7 +53,7 @@ class EventHandlerTests(TestCase):
     def test_create_shipping_event_mixed_line_status(self):
         """ The created ShippingEvent should only contain the fulfilled line items. """
         # Create a basket with multiple items
-        basket = factories.create_basket()
+        basket = create_basket(self.site)
         product = factories.create_product()
         factories.create_stockrecord(product, num_in_stock=2)
         basket.add_product(product)

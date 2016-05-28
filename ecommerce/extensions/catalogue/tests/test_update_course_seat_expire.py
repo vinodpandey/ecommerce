@@ -12,7 +12,6 @@ import httpretty
 from slumber.exceptions import HttpClientError
 from testfixtures import LogCapture
 
-from ecommerce.core.url_utils import get_lms_url
 from ecommerce.courses.models import Product
 from ecommerce.courses.tests.factories import CourseFactory
 from ecommerce.extensions.catalogue.tests.mixins import CourseCatalogTestMixin
@@ -56,7 +55,7 @@ class UpdateSeatExpireDateTests(CourseCatalogTestMixin, TestCase):
         self.assertTrue(httpretty.is_enabled(), 'httpretty must be enabled to mock Course API calls.')
 
         body = body or {}
-        url = get_lms_url('/api/courses/v1/courses/?page_size=1')
+        url = self.site.siteconfiguration.build_lms_url('/api/courses/v1/courses/?page_size=1')
         httpretty.register_uri(
             httpretty.GET,
             url,
@@ -91,7 +90,7 @@ class UpdateSeatExpireDateTests(CourseCatalogTestMixin, TestCase):
         ]
 
         with LogCapture(LOGGER_NAME) as lc:
-            call_command('update_course_seat_expire', commit=True)
+            call_command('update_course_seat_expire', commit=True, partner_code=self.partner.code)
             lc.check(*expected)
 
         # Verify course seats have been updated
@@ -122,7 +121,7 @@ class UpdateSeatExpireDateTests(CourseCatalogTestMixin, TestCase):
         ]
 
         with LogCapture(LOGGER_NAME) as lc:
-            call_command('update_course_seat_expire', commit=False)
+            call_command('update_course_seat_expire', commit=False, partner_code=self.partner.code)
             lc.check(*expected)
 
         # Verify course seats have not been updated
@@ -150,7 +149,7 @@ class UpdateSeatExpireDateTests(CourseCatalogTestMixin, TestCase):
 
         with LogCapture(LOGGER_NAME) as lc:
             with self.assertRaises(CommandError):
-                call_command('update_course_seat_expire')
+                call_command('update_course_seat_expire', partner_code=self.partner.code)
                 lc.check(*expected)
 
     @httpretty.activate
@@ -176,7 +175,7 @@ class UpdateSeatExpireDateTests(CourseCatalogTestMixin, TestCase):
         ]
 
         with LogCapture(LOGGER_NAME) as lc:
-            call_command('update_course_seat_expire')
+            call_command('update_course_seat_expire', partner_code=self.partner.code)
             lc.check(*expected)
 
     @httpretty.activate
@@ -210,7 +209,7 @@ class UpdateSeatExpireDateTests(CourseCatalogTestMixin, TestCase):
         ]
         with self.assertRaises(HttpClientError):
             with LogCapture(LOGGER_NAME) as lc:
-                call_command('update_course_seat_expire')
+                call_command('update_course_seat_expire', partner_code=self.partner.code)
                 lc.check(*expected)
 
         self.assertEqual(mock_max_tries.call_count, 2)

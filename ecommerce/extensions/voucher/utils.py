@@ -15,7 +15,6 @@ from oscar.core.loading import get_model
 from oscar.templatetags.currency_filters import currency
 import pytz
 
-from ecommerce.core.url_utils import get_ecommerce_url
 from ecommerce.invoice.models import Invoice
 
 logger = logging.getLogger(__name__)
@@ -58,7 +57,7 @@ def _get_voucher_status(voucher, offer):
     return status
 
 
-def _get_info_for_coupon_report(coupon, voucher):
+def _get_info_for_coupon_report(site, coupon, voucher):
     offer = voucher.offers.all().first()
     if offer.condition.range.catalog:
         coupon_stockrecord = StockRecord.objects.get(product=coupon)
@@ -92,7 +91,7 @@ def _get_info_for_coupon_report(coupon, voucher):
     status = _get_voucher_status(voucher, offer)
 
     path = '{path}?code={code}'.format(path=reverse('coupons:offer'), code=voucher.code)
-    url = get_ecommerce_url(path)
+    url = site.siteconfiguration.build_ecommerce_url(path)
     author = history.history_user.full_name
 
     try:
@@ -182,8 +181,9 @@ def generate_coupon_report(coupon_vouchers):
     for coupon_voucher in coupon_vouchers:
         coupon = coupon_voucher.coupon
 
+        # TODO (CCB): Clean this up. Convert the older coupons to the new model. See SOL-1820.
         # Get client based on the invoice that was created during coupon creation.
-        # We used to save the client as the basket owner and therefor the exception
+        # We used to save the client as the basket owner and therefore the exception
         # catch is put in place for backwards compatibility with older coupons.
         basket = Basket.objects.filter(lines__product_id=coupon.id).first()
         try:
@@ -194,7 +194,7 @@ def generate_coupon_report(coupon_vouchers):
             client = basket.owner.username
 
         for voucher in coupon_voucher.vouchers.all():
-            row = _get_info_for_coupon_report(coupon, voucher)
+            row = _get_info_for_coupon_report(basket.site, coupon, voucher)
 
             for item in ('Order Number', 'Redeemed By Username',):
                 row[item] = ''

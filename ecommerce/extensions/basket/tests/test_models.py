@@ -4,6 +4,7 @@ from django.contrib.sites.models import Site
 from oscar.core.loading import get_class, get_model
 from oscar.test import factories
 
+from ecommerce.extensions.test.factories import create_basket
 from ecommerce.tests.testcases import TestCase
 
 Basket = get_model('basket', 'Basket')
@@ -24,22 +25,21 @@ class BasketTests(TestCase):
 
     def _create_basket(self, user, site, status=Basket.OPEN):
         """ Create a new Basket for the user. """
-        basket = factories.create_basket()
+        basket = create_basket(site)
         basket.owner = user
-        basket.site = site
         basket.status = status
         basket.save()
         return basket
 
     def test_order_number(self):
         """ The method should return the order number for the Order corresponding to the Basket. """
-        basket = factories.create_basket()
+        basket = create_basket(self.site)
         expected = OrderNumberGenerator().order_number(basket)
         self.assertEqual(basket.order_number, expected)
 
     def test_unicode(self):
         """ Verify the __unicode__ method returns the correct value. """
-        basket = factories.create_basket()
+        basket = create_basket(self.site)
         expected = u"{id} - {status} basket (owner: {owner}, lines: {num_lines})".format(
             id=basket.id,
             status=basket.status,

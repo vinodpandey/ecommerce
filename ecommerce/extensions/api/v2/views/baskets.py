@@ -178,17 +178,17 @@ class BasketCreateView(EdxOrderPlacementMixin, generics.CreateAPIView):
             payment_processor_name = request.data.get(AC.KEYS.PAYMENT_PROCESSOR_NAME)
             if payment_processor_name:
                 try:
-                    payment_processor = get_processor_class_by_name(payment_processor_name)
+                    payment_processor_class = get_processor_class_by_name(payment_processor_name)
                 except payment_exceptions.ProcessorNotFoundError as error:
                     return self._report_bad_request(
                         error.message,
                         payment_exceptions.PROCESSOR_NOT_FOUND_USER_MESSAGE
                     )
             else:
-                payment_processor = get_default_processor_class()
+                payment_processor_class = get_default_processor_class()
 
             try:
-                response_data = self._checkout(basket, payment_processor())
+                response_data = self._checkout(basket, payment_processor_class(self.request.site))
             except Exception as ex:  # pylint: disable=broad-except
                 basket.delete()
                 logger.exception('Failed to initiate checkout for Basket [%d]. The basket has been deleted.', basket_id)

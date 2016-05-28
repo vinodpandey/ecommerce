@@ -1,17 +1,14 @@
 import logging
 
+import waffle
 from django.conf import settings
 from django.dispatch import receiver
 from oscar.core.loading import get_class
-from threadlocals import threadlocals
-import waffle
 
-from ecommerce.core.url_utils import get_lms_url
 from ecommerce.courses.utils import mode_for_seat
 from ecommerce.extensions.analytics.utils import is_segment_configured, parse_tracking_context, silence_exceptions
 from ecommerce.extensions.checkout.utils import get_provider_data
 from ecommerce.notifications.notifications import send_notification
-
 
 logger = logging.getLogger(__name__)
 post_checkout = get_class('checkout.signals', 'post_checkout')
@@ -24,7 +21,7 @@ ORDER_LINE_COUNT = 1
 @silence_exceptions("Failed to emit tracking event upon order completion.")
 def track_completed_order(sender, order=None, **kwargs):  # pylint: disable=unused-argument
     """Emit a tracking event when an order is placed."""
-    if not (is_segment_configured() and order.total_excl_tax > 0):
+    if not (is_segment_configured(order.site) and order.total_excl_tax > 0):
         return
 
     user_tracking_id, lms_client_id, lms_ip = parse_tracking_context(order.user)
@@ -75,20 +72,20 @@ def send_course_purchase_email(sender, order=None, **kwargs):  # pylint: disable
                 )
                 return
             elif product.get_product_class().name == 'Seat':
-                provider_data = get_provider_data(provider_id)
+                provider_data = get_provider_data(order.site, provider_id)
                 if provider_data:
                     send_notification(
                         order.user,
                         'CREDIT_RECEIPT',
                         {
                             'course_title': product.title,
-                            'receipt_page_url': get_lms_url(
+                            'receipt_page_url': order.site.siteconfiguration.build_lms_url(
                                 '{}?orderNum={}'.format(settings.RECEIPT_PAGE_PATH, order.number)
                             ),
                             'credit_hours': product.attr.credit_hours,
                             'credit_provider': provider_data['display_name'],
                         },
-                        threadlocals.get_current_request().site
+                        order.site
                     )
 
         else:

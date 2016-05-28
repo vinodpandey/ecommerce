@@ -14,7 +14,6 @@ from testfixtures import LogCapture
 
 from ecommerce.core.constants import ENROLLMENT_CODE_PRODUCT_CLASS_NAME, ENROLLMENT_CODE_SWITCH
 from ecommerce.core.tests import toggle_switch
-from ecommerce.core.url_utils import get_lms_enrollment_api_url
 from ecommerce.coupons.tests.mixins import CouponMixin
 from ecommerce.courses.models import Course
 from ecommerce.courses.tests.factories import CourseFactory
@@ -51,6 +50,11 @@ class EnrollmentFulfillmentModuleTests(CourseCatalogTestMixin, FulfillmentTestMi
     certificate_type = 'test-certificate-type'
     provider = None
 
+    @property
+    def enrollment_api_url(self):
+        """ Returns the root URL of the Enrollment API. """
+        return self.site.siteconfiguration.enrollment_api_url
+
     def setUp(self):
         super(EnrollmentFulfillmentModuleTests, self).setUp()
 
@@ -59,7 +63,7 @@ class EnrollmentFulfillmentModuleTests(CourseCatalogTestMixin, FulfillmentTestMi
 
         self.seat = self.course.create_or_update_seat(self.certificate_type, False, 100, self.partner, self.provider)
 
-        basket = BasketFactory()
+        basket = BasketFactory(site=self.site)
         basket.add_product(self.seat, 1)
         self.order = factories.create_order(number=1, basket=basket, user=self.user)
 
@@ -77,7 +81,7 @@ class EnrollmentFulfillmentModuleTests(CourseCatalogTestMixin, FulfillmentTestMi
         self.provider = provider
         self.seat = self.course.create_or_update_seat(self.certificate_type, False, 100, self.partner, self.provider)
 
-        basket = BasketFactory()
+        basket = BasketFactory(site=self.site)
         basket.add_product(self.seat, 1)
         self.order = factories.create_order(number=2, basket=basket, user=self.user)
 
@@ -90,7 +94,7 @@ class EnrollmentFulfillmentModuleTests(CourseCatalogTestMixin, FulfillmentTestMi
     @mock.patch('ecommerce.extensions.fulfillment.modules.parse_tracking_context')
     def test_enrollment_module_fulfill(self, parse_tracking_context):
         """Happy path test to ensure we can properly fulfill enrollments."""
-        httpretty.register_uri(httpretty.POST, get_lms_enrollment_api_url(), status=200, body='{}', content_type=JSON)
+        httpretty.register_uri(httpretty.POST, self.enrollment_api_url, status=200, body='{}', content_type=JSON)
         parse_tracking_context.return_value = ('user_123', 'GA-123456789', '11.22.33.44')
         # Attempt to enroll.
         with LogCapture(LOGGER_NAME) as l:
@@ -174,7 +178,7 @@ class EnrollmentFulfillmentModuleTests(CourseCatalogTestMixin, FulfillmentTestMi
         """Test that lines receive a server-side error status if a server-side error occurs during fulfillment."""
         # NOTE: We are testing for cases where the response does and does NOT have data. The module should be able
         # to handle both cases.
-        httpretty.register_uri(httpretty.POST, get_lms_enrollment_api_url(), status=500, body=body, content_type=JSON)
+        httpretty.register_uri(httpretty.POST, self.enrollment_api_url, status=500, body=body, content_type=JSON)
         EnrollmentFulfillmentModule().fulfill_product(self.order, list(self.order.lines.all()))
         self.assertEqual(LINE.FULFILLMENT_SERVER_ERROR, self.order.lines.all()[0].status)
 
@@ -182,7 +186,7 @@ class EnrollmentFulfillmentModuleTests(CourseCatalogTestMixin, FulfillmentTestMi
     @mock.patch('ecommerce.extensions.fulfillment.modules.parse_tracking_context')
     def test_revoke_product(self, parse_tracking_context):
         """ The method should call the Enrollment API to un-enroll the student, and return True. """
-        httpretty.register_uri(httpretty.POST, get_lms_enrollment_api_url(), status=200, body='{}', content_type=JSON)
+        httpretty.register_uri(httpretty.POST, self.enrollment_api_url, status=200, body='{}', content_type=JSON)
         parse_tracking_context.return_value = ('user_123', 'GA-123456789', '11.22.33.44')
         line = self.order.lines.first()
 
@@ -234,7 +238,7 @@ class EnrollmentFulfillmentModuleTests(CourseCatalogTestMixin, FulfillmentTestMi
         """
         message = 'Enrollment mode mismatch: active mode=x, requested mode=y. Won\'t deactivate.'
         body = '{{"message": "{}"}}'.format(message)
-        httpretty.register_uri(httpretty.POST, get_lms_enrollment_api_url(), status=400, body=body, content_type=JSON)
+        httpretty.register_uri(httpretty.POST, self.enrollment_api_url, status=400, body=body, content_type=JSON)
 
         line = self.order.lines.first()
         logger_name = 'ecommerce.extensions.fulfillment.modules'
@@ -250,7 +254,7 @@ class EnrollmentFulfillmentModuleTests(CourseCatalogTestMixin, FulfillmentTestMi
         """ If the Enrollment API responds with a non-200 status, the method should log an error and return False. """
         message = 'Meh.'
         body = '{{"message": "{}"}}'.format(message)
-        httpretty.register_uri(httpretty.POST, get_lms_enrollment_api_url(), status=500, body=body, content_type=JSON)
+        httpretty.register_uri(httpretty.POST, self.enrollment_api_url, status=500, body=body, content_type=JSON)
 
         line = self.order.lines.first()
         logger_name = 'ecommerce.extensions.fulfillment.modules'
@@ -270,7 +274,7 @@ class EnrollmentFulfillmentModuleTests(CourseCatalogTestMixin, FulfillmentTestMi
         def request_callback(_method, _uri, _headers):
             raise Timeout
 
-        httpretty.register_uri(httpretty.POST, get_lms_enrollment_api_url(), body=request_callback)
+        httpretty.register_uri(httpretty.POST, self.enrollment_api_url, body=request_callback)
         line = self.order.lines.first()
         logger_name = 'ecommerce.extensions.fulfillment.modules'
 
@@ -286,7 +290,7 @@ class EnrollmentFulfillmentModuleTests(CourseCatalogTestMixin, FulfillmentTestMi
         """Happy path test to ensure we can properly fulfill enrollments."""
         # Create the credit certificate type and order for the credit certificate type.
         self.create_seat_and_order(certificate_type='credit', provider='MIT')
-        httpretty.register_uri(httpretty.POST, get_lms_enrollment_api_url(), status=200, body='{}', content_type=JSON)
+        httpretty.register_uri(httpretty.POST, self.enrollment_api_url, status=200, body='{}', content_type=JSON)
 
         # Attempt to enroll.
         with LogCapture(LOGGER_NAME) as l:
@@ -361,7 +365,7 @@ class EnrollmentFulfillmentModuleTests(CourseCatalogTestMixin, FulfillmentTestMi
         # not available for ecommerce tests.
         try:
             # pylint: disable=protected-access
-            EnrollmentFulfillmentModule()._post_to_enrollment_api(data=data, user=user)
+            EnrollmentFulfillmentModule()._post_to_enrollment_api(self.site, data, user)
         except ConnectionError as exp:
             # Check that the enrollment request object has the analytics header
             # 'x-edx-ga-client-id' and 'x-forwarded-for'.
@@ -408,7 +412,7 @@ class CouponFulfillmentModuleTest(CouponMixin, FulfillmentTestMixin, TestCase):
         super(CouponFulfillmentModuleTest, self).setUp()
         coupon = self.create_coupon()
         user = UserFactory()
-        basket = BasketFactory()
+        basket = BasketFactory(site=self.site)
         basket.add_product(coupon, 1)
         self.order = factories.create_order(number=1, basket=basket, user=user)
 
@@ -447,7 +451,7 @@ class EnrollmentCodeFulfillmentModuleTests(CourseCatalogTestMixin, TestCase):
         course.create_or_update_seat('verified', True, 50, self.partner)
         enrollment_code = Product.objects.get(product_class__name=ENROLLMENT_CODE_PRODUCT_CLASS_NAME)
         user = UserFactory()
-        basket = BasketFactory()
+        basket = BasketFactory(site=self.site)
         basket.add_product(enrollment_code, self.QUANTITY)
         self.order = factories.create_order(number=1, basket=basket, user=user)
 

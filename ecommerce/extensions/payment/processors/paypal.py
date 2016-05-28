@@ -10,7 +10,6 @@ from oscar.core.loading import get_model
 import paypalrestsdk
 import waffle
 
-from ecommerce.core.url_utils import get_ecommerce_url, get_lms_url
 from ecommerce.extensions.order.constants import PaymentEventTypeName
 from ecommerce.extensions.payment.processors import BasePaymentProcessor
 from ecommerce.extensions.payment.models import PaypalWebProfile
@@ -37,13 +36,15 @@ class Paypal(BasePaymentProcessor):
     NAME = u'paypal'
     DEFAULT_PROFILE_NAME = 'default'
 
-    def __init__(self):
+    def __init__(self, site):
         """
         Constructs a new instance of the PayPal processor.
 
-        Raises:
-            KeyError: If a required setting is not configured for this payment processor
+        Arguments:
+            site (Site): Django Site
         """
+        super(Paypal, self).__init__(site)
+
         # Number of times payment execution is retried after failure.
         self.retry_attempts = self.configuration.get('retry_attempts', 1)
 
@@ -61,15 +62,15 @@ class Paypal(BasePaymentProcessor):
 
     @property
     def receipt_url(self):
-        return get_lms_url(self.configuration['receipt_path'])
+        return self.site.siteconfiguration.build_lms_url(self.configuration['receipt_path'])
 
     @property
     def cancel_url(self):
-        return get_lms_url(self.configuration['cancel_path'])
+        return self.site.siteconfiguration.build_lms_url(self.configuration['cancel_path'])
 
     @property
     def error_url(self):
-        return get_lms_url(self.configuration['error_path'])
+        return self.site.siteconfiguration.build_lms_url(self.configuration['error_path'])
 
     def get_transaction_parameters(self, basket, request=None):
         """
@@ -89,7 +90,7 @@ class Paypal(BasePaymentProcessor):
             GatewayError: Indicates a general error or unexpected behavior on the part of PayPal which prevented
                 a payment from being created.
         """
-        return_url = urljoin(get_ecommerce_url(), reverse('paypal_execute'))
+        return_url = urljoin(self.site.siteconfiguration.build_ecommerce_url(), reverse('paypal_execute'))
         data = {
             'intent': 'sale',
             'redirect_urls': {

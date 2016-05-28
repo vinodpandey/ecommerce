@@ -1,13 +1,13 @@
 """Tests of the service health endpoint."""
 import json
 
-from django.db import DatabaseError
-from django.conf import settings
-from django.test.utils import override_settings
-from django.core.urlresolvers import reverse
-from django.contrib.auth import get_user_model
+import httpretty
 import mock
-from requests import Response
+from django.conf import settings
+from django.contrib.auth import get_user_model
+from django.core.urlresolvers import reverse
+from django.db import DatabaseError
+from django.test.utils import override_settings
 from requests.exceptions import RequestException
 from rest_framework import status
 from testfixtures import LogCapture
@@ -19,43 +19,31 @@ LOGGER_NAME = 'ecommerce.core.views'
 User = get_user_model()
 
 
-@mock.patch('requests.get')
 class HealthTests(TestCase):
     """Tests of the health endpoint."""
 
-    def setUp(self):
-        super(HealthTests, self).setUp()
-        self.fake_lms_response = Response()
+    def mock_good_lms_health(self):
+        """ Mock a successful response from the LMS health endpoint. """
+        url = self.site.siteconfiguration.lms_heartbeat_url
+        httpretty.register_uri(httpretty.GET, url)
 
-    def test_all_services_available(self, mock_lms_request):
+    def mock_bad_lms_health(self):
+        """ Mock a failure response from the LMS health endpoint. """
+        url = self.site.siteconfiguration.lms_heartbeat_url
+        httpretty.register_uri(httpretty.GET, url, status=500)
+
+    @httpretty.activate
+    def test_all_services_available(self):
         """Test that the endpoint reports when all services are healthy."""
-        self.fake_lms_response.status_code = status.HTTP_200_OK
-        mock_lms_request.return_value = self.fake_lms_response
+        self.mock_good_lms_health()
+        self.assert_health_status(status.HTTP_200_OK, Status.OK, Status.OK, Status.OK)
 
-        self._assert_health(status.HTTP_200_OK, Status.OK, Status.OK, Status.OK)
-
-    @mock.patch('ecommerce.core.views.get_lms_heartbeat_url', mock.Mock(return_value=''))
-    @mock.patch('django.contrib.sites.middleware.get_current_site', mock.Mock(return_value=None))
-    @mock.patch('django.db.backends.base.base.BaseDatabaseWrapper.cursor', mock.Mock(side_effect=DatabaseError))
-    def test_database_outage(self, mock_lms_request):
-        """Test that the endpoint reports when the database is unavailable."""
-        self.fake_lms_response.status_code = status.HTTP_200_OK
-        mock_lms_request.return_value = self.fake_lms_response
-
-        self._assert_health(
-            status.HTTP_503_SERVICE_UNAVAILABLE,
-            Status.UNAVAILABLE,
-            Status.UNAVAILABLE,
-            Status.OK
-        )
-
-    def test_lms_outage(self, mock_lms_request):
+    @httpretty.activate
+    def test_lms_outage(self):
         """Test that the endpoint reports when the LMS is unhealthy."""
-        self.fake_lms_response.status_code = status.HTTP_503_SERVICE_UNAVAILABLE
-        mock_lms_request.return_value = self.fake_lms_response
-
+        self.mock_bad_lms_health()
         with LogCapture(LOGGER_NAME) as l:
-            self._assert_health(
+            self.assert_health_status(
                 status.HTTP_200_OK,
                 Status.OK,
                 Status.OK,
@@ -63,20 +51,34 @@ class HealthTests(TestCase):
             )
             l.check((LOGGER_NAME, 'CRITICAL', UnavailabilityMessage.LMS))
 
-    def test_lms_connection_failure(self, mock_lms_request):
+    @mock.patch('requests.get', mock.Mock(side_effect=RequestException))
+    def test_lms_connection_exception(self):
         """Test that the endpoint reports when it cannot contact the LMS."""
-        mock_lms_request.side_effect = RequestException
-
         with LogCapture(LOGGER_NAME) as l:
-            self._assert_health(
+            self.assert_health_status(
                 status.HTTP_200_OK,
                 Status.OK,
                 Status.OK,
                 Status.UNAVAILABLE
             )
-            l.check((LOGGER_NAME, 'CRITICAL', UnavailabilityMessage.LMS))
+            l.check((LOGGER_NAME, 'ERROR', UnavailabilityMessage.LMS))
 
-    def _assert_health(self, status_code, overall_status, database_status, lms_status):
+    @httpretty.activate
+    @mock.patch('django.contrib.sites.middleware.get_current_site', mock.Mock(return_value=None))
+    def test_database_outage(self):
+        """Test that the endpoint reports when the database is unavailable."""
+        self.mock_good_lms_health()
+
+        with mock.patch('django.db.backends.base.base.BaseDatabaseWrapper.cursor',
+                        mock.Mock(side_effect=DatabaseError)):
+            self.assert_health_status(
+                status.HTTP_503_SERVICE_UNAVAILABLE,
+                Status.UNAVAILABLE,
+                Status.UNAVAILABLE,
+                Status.UNKNOWN
+            )
+
+    def assert_health_status(self, status_code, overall_status, database_status, lms_status):
         """Verify that the response matches expectations."""
         response = self.client.get(reverse('health'))
         self.assertEqual(response.status_code, status_code)

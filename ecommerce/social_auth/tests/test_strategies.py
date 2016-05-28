@@ -1,6 +1,6 @@
 """Tests of social auth strategies."""
 from django.conf import settings
-from threadlocals.threadlocals import get_current_request
+from django.test import RequestFactory
 
 from ecommerce.social_auth.strategies import CurrentSiteDjangoStrategy
 from ecommerce.tests.testcases import TestCase
@@ -14,7 +14,10 @@ class CurrentSiteDjangoStrategyTests(TestCase):
         self.site.siteconfiguration.oauth_settings = {
             'SOCIAL_AUTH_EDX_OIDC_KEY': 'test-key'
         }
-        self.strategy = CurrentSiteDjangoStrategy(None, get_current_request())
+        request = RequestFactory(SERVER_NAME=self.site.domain).get('/')
+        request.site = self.site
+        request.session = {}
+        self.strategy = CurrentSiteDjangoStrategy(None, request)
 
     def test_get_setting_from_siteconfiguration(self):
         """Test that a setting can be retrieved from the site configuration."""

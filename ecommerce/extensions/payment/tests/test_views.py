@@ -17,6 +17,7 @@ from ecommerce.extensions.payment.processors.paypal import Paypal
 from ecommerce.extensions.payment.tests.mixins import PaymentEventsMixin, CybersourceMixin, PaypalMixin
 from ecommerce.extensions.payment.views import CybersourceNotifyView, PaypalPaymentExecutionView
 from ecommerce.core.tests.patched_httpretty import httpretty
+from ecommerce.extensions.test.factories import create_basket
 from ecommerce.tests.testcases import TestCase
 
 Basket = get_model('basket', 'Basket')
@@ -39,11 +40,11 @@ class CybersourceNotifyViewTests(CybersourceMixin, PaymentEventsMixin, TestCase)
         self.user = factories.UserFactory()
         self.billing_address = self.make_billing_address()
 
-        self.basket = factories.create_basket()
+        self.basket = create_basket(self.site)
         self.basket.owner = self.user
         self.basket.freeze()
 
-        self.processor = Cybersource()
+        self.processor = Cybersource(self.site)
         self.processor_name = self.processor.NAME
 
     def _assert_payment_data_recorded(self, notification):
@@ -299,11 +300,11 @@ class PaypalPaymentExecutionViewTests(PaypalMixin, PaymentEventsMixin, TestCase)
     def setUp(self):
         super(PaypalPaymentExecutionViewTests, self).setUp()
 
-        self.basket = factories.create_basket()
+        self.basket = create_basket(self.site)
         self.basket.owner = factories.UserFactory()
         self.basket.freeze()
 
-        self.processor = Paypal()
+        self.processor = Paypal(self.site)
         self.processor_name = self.processor.NAME
 
         # Dummy request from which an HTTP Host header can be extracted during
@@ -473,7 +474,7 @@ class PaypalPaymentExecutionViewTests(PaypalMixin, PaymentEventsMixin, TestCase)
             self.mock_payment_creation_response(self.basket)
             self.processor.get_transaction_parameters(self.basket, request=self.request)
 
-            dummy_basket = factories.create_basket()
+            dummy_basket = create_basket(self.site)
             self.mock_payment_creation_response(dummy_basket)
             self.processor.get_transaction_parameters(dummy_basket, request=self.request)
 

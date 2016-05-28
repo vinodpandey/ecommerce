@@ -44,23 +44,13 @@ class CatalogPreviewMockMixin(object):
 
     def mock_dynamic_catalog_contains_api(self, course_run_ids, query):
         """ Helper function to register a dynamic course catalog API endpoint for the contains information. """
-        course_contains_info = {
-            'course_runs': {}
-        }
-        for course_run_id in course_run_ids:
-            course_contains_info['course_runs'][course_run_id] = True
-
-        course_run_info_json = json.dumps(course_contains_info)
-        course_run_url = '{}course_runs/contains/?course_run_ids={}&query={}'.format(
-            settings.COURSE_CATALOG_API_URL,
-            (course_run_id for course_run_id in course_run_ids),
-            query if query else 'id:course*'
+        body = json.dumps({'course_runs': {course_run_id: True for course_run_id in course_run_ids}})
+        url = '{root}course_runs/contains/?course_run_ids={course_run_ids}&query={query}'.format(
+            root=settings.COURSE_CATALOG_API_URL,
+            course_run_ids=','.join(course_run_ids),
+            query=query
         )
-        httpretty.register_uri(
-            httpretty.GET, course_run_url,
-            body=course_run_info_json,
-            content_type='application/json'
-        )
+        httpretty.register_uri(httpretty.GET, url, body=body, content_type='application/json')
 
 
 class CouponMixin(object):
@@ -140,20 +130,23 @@ class CouponMixin(object):
             'course_seat_types': course_seat_types,
         }
 
-        coupon = CouponViewSet().create_coupon_product(
+        # TODO Create an actual factory. Do NOT use the view!
+        view = CouponViewSet()
+        request = RequestFactory()
+        request.site = self.site
+        request.user = factories.UserFactory()
+        request.COOKIES = {}
+        view.request = request
+
+        coupon = view.create_coupon_product(
             title=title,
             price=price,
             data=data
         )
 
-        request = RequestFactory()
-        request.site = self.site
-        request.user = factories.UserFactory()
-        request.COOKIES = {}
-
         self.basket = prepare_basket(request, coupon)
 
-        self.response_data = CouponViewSet().create_order_for_invoice(self.basket, coupon_id=coupon.id, client=client)
+        self.response_data = view.create_order_for_invoice(self.basket, coupon_id=coupon.id, client=client)
         coupon.client = client
 
         return coupon

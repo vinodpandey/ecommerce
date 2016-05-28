@@ -3,21 +3,20 @@ import requests
 
 from django.conf import settings
 
-from ecommerce.core.url_utils import get_lms_url
-
 
 logger = logging.getLogger(__name__)
 
 
-def get_provider_data(provider_id):
+def get_provider_data(site, provider_id):
     """Get the provider information for provider id provider.
 
     Args:
-        provider_id(str): Identifier for the provider
+        site (Site): Django Site, linking to the LMS/Credit API URL.
+        provider_id (str): Identifier for the provider
 
     Returns: dict
     """
-    provider_info_url = get_lms_url('api/credit/v1/providers/{}'.format(provider_id))
+    provider_info_url = site.siteconfiguration.build_lms_url('api/credit/v1/providers/{}'.format(provider_id))
     timeout = settings.PROVIDER_DATA_PROCESSING_TIMEOUT
     headers = {
         'Content-Type': 'application/json',

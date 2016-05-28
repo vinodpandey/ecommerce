@@ -1,16 +1,13 @@
-from functools import wraps
 import json
 import logging
-
-from threadlocals.threadlocals import get_current_request
-
+from functools import wraps
 
 logger = logging.getLogger(__name__)
 
 
-def is_segment_configured():
+def is_segment_configured(site):
     """Returns a Boolean indicating if Segment has been configured for use."""
-    return bool(get_current_request().site.siteconfiguration.segment_key)
+    return bool(site.siteconfiguration.segment_key)
 
 
 def parse_tracking_context(user):
@@ -48,6 +45,7 @@ def silence_exceptions(msg):
     Arguments:
         msg (str): A message to be logged when an exception is raised.
     """
+
     def decorator(func):  # pylint: disable=missing-docstring
         @wraps(func)
         def wrapper(*args, **kwargs):  # pylint: disable=missing-docstring
@@ -55,7 +53,9 @@ def silence_exceptions(msg):
                 return func(*args, **kwargs)
             except:  # pylint: disable=bare-except
                 logger.exception(msg)
+
         return wrapper
+
     return decorator
 
 

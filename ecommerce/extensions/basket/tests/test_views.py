@@ -19,8 +19,6 @@ from testfixtures import LogCapture
 from ecommerce.core.constants import ENROLLMENT_CODE_PRODUCT_CLASS_NAME, ENROLLMENT_CODE_SWITCH
 from ecommerce.core.models import SiteConfiguration
 from ecommerce.core.tests import toggle_switch
-from ecommerce.core.url_utils import get_lms_enrollment_api_url
-from ecommerce.core.url_utils import get_lms_url
 from ecommerce.coupons.tests.mixins import CouponMixin
 from ecommerce.courses.tests.factories import CourseFactory
 from ecommerce.extensions.catalogue.tests.mixins import CourseCatalogTestMixin
@@ -47,6 +45,10 @@ class BasketSingleItemViewTests(CouponMixin, CourseCatalogTestMixin, LmsApiMockM
     """ BasketSingleItemView view tests. """
     path = reverse('basket:single-item')
 
+    @property
+    def enrollment_api_url(self):
+        return self.site.siteconfiguration.enrollment_api_url
+
     def setUp(self):
         super(BasketSingleItemViewTests, self).setUp()
         self.user = self.create_user()
@@ -65,7 +67,7 @@ class BasketSingleItemViewTests(CouponMixin, CourseCatalogTestMixin, LmsApiMockM
         """
         self.assertTrue(httpretty.is_enabled())
         url = '{host}/{username},{course_id}'.format(
-            host=get_lms_enrollment_api_url(),
+            host=self.enrollment_api_url,
             username=self.user.username,
             course_id=course_id
         )
@@ -78,7 +80,7 @@ class BasketSingleItemViewTests(CouponMixin, CourseCatalogTestMixin, LmsApiMockM
         """
         self.assertTrue(httpretty.is_enabled())
         url = '{host}/{username},{course_id}'.format(
-            host=get_lms_enrollment_api_url(),
+            host=self.enrollment_api_url,
             username=self.user.username,
             course_id=course_id
         )
@@ -93,7 +95,7 @@ class BasketSingleItemViewTests(CouponMixin, CourseCatalogTestMixin, LmsApiMockM
             raise error
 
         url = '{host}/{username},{course_id}'.format(
-            host=get_lms_enrollment_api_url(),
+            host=self.enrollment_api_url,
             username=self.user.username,
             course_id=self.course.id
         )
@@ -265,7 +267,7 @@ class BasketSummaryViewTests(CourseCatalogTestMixin, LmsApiMockMixin, ApiMockMix
         logger_name = 'ecommerce.extensions.basket.views'
         self.mock_api_error(
             error=error,
-            url=get_lms_url('api/courses/v1/courses/{}/'.format(self.course.id))
+            url=self.site.siteconfiguration.build_lms_url('api/courses/v1/courses/{}/'.format(self.course.id))
         )
 
         with LogCapture(logger_name) as l:

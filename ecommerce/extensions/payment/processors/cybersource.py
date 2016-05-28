@@ -12,9 +12,7 @@ from oscar.core.loading import get_model
 from suds.client import Client
 from suds.sudsobject import asdict
 from suds.wsse import Security, UsernameToken
-from threadlocals.threadlocals import get_current_request
 
-from ecommerce.core.url_utils import get_lms_url
 from ecommerce.core.constants import ISO_8601_FORMAT
 from ecommerce.extensions.order.constants import PaymentEventTypeName
 from ecommerce.extensions.payment.constants import CYBERSOURCE_CARD_TYPE_MAP
@@ -44,7 +42,7 @@ class Cybersource(BasePaymentProcessor):
 
     NAME = 'cybersource'
 
-    def __init__(self):
+    def __init__(self, site):
         """
         Constructs a new instance of the CyberSource processor.
 
@@ -52,6 +50,8 @@ class Cybersource(BasePaymentProcessor):
             KeyError: If no settings configured for this payment processor
             AttributeError: If LANGUAGE_CODE setting is not set.
         """
+        super(Cybersource, self).__init__(site)
+
         configuration = self.configuration
         self.soap_api_url = configuration['soap_api_url']
         self.merchant_id = configuration['merchant_id']
@@ -63,13 +63,12 @@ class Cybersource(BasePaymentProcessor):
         self.send_level_2_3_details = configuration.get('send_level_2_3_details', True)
         self.language_code = settings.LANGUAGE_CODE
 
-    @property
-    def receipt_page_url(self):
-        return get_lms_url(self.configuration['receipt_path'])
+    def receipt_page_url(self, order_number):
+        root = self.site.siteconfiguration.build_lms_url(self.configuration['receipt_path'])
+        return '{root}?orderNum={order_number}'.format(root=root, order_number=order_number)
 
-    @property
     def cancel_page_url(self):
-        return get_lms_url(self.configuration['cancel_path'])
+        return self.site.siteconfiguration.build_lms_url(self.configuration['cancel_path'])
 
     def get_transaction_parameters(self, basket, request=None):
         """
@@ -98,8 +97,8 @@ class Cybersource(BasePaymentProcessor):
             'amount': str(basket.total_incl_tax),
             'currency': basket.currency,
             'consumer_id': basket.owner.username,
-            'override_custom_receipt_page': '{}?orderNum={}'.format(self.receipt_page_url, basket.order_number),
-            'override_custom_cancel_page': self.cancel_page_url,
+            'override_custom_receipt_page': self.receipt_page_url(basket.order_number),
+            'override_custom_cancel_page': self.cancel_page_url(),
         }
 
         # XCOM-274: when internal reporting across all processors is
@@ -112,7 +111,7 @@ class Cybersource(BasePaymentProcessor):
 
         # Level 2/3 details
         if self.send_level_2_3_details:
-            parameters['amex_data_taa1'] = '{}'.format(get_current_request().site.name)
+            parameters['amex_data_taa1'] = '{}'.format(basket.site.name)
             parameters['purchasing_level'] = '3'
             parameters['line_item_count'] = basket.lines.count()
             # Note (CCB): This field (purchase order) is required for Visa;

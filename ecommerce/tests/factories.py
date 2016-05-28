@@ -29,6 +29,10 @@ class SiteConfigurationFactory(factory.DjangoModelFactory):
     site = factory.SubFactory(SiteFactory)
     partner = factory.SubFactory(PartnerFactory)
 
+    @factory.lazy_attribute
+    def from_email(self):
+        return '{}@example.com'.format(self.partner.code)
+
 
 class StockRecordFactory(OscarStockRecordFactory):
     product = factory.SubFactory(ProductFactory)

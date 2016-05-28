@@ -2,11 +2,9 @@ import json
 
 import ddt
 import httpretty
-import mock
 from django.conf import settings
 from django.core.urlresolvers import reverse
 from django.test import RequestFactory
-from edx_rest_api_client.client import EdxRestApiClient
 from oscar.core.loading import get_model
 from requests.exceptions import ConnectionError, Timeout
 from slumber.exceptions import SlumberBaseException
@@ -101,37 +99,7 @@ class CatalogViewSetTest(CatalogMixin, CatalogPreviewMockMixin, ApiMockMixin, Te
         expected_data = ProductSerializer(self.stock_record.product, context={'request': response.wsgi_request}).data
         self.assertListEqual(response_data['results'], [expected_data])
 
-    @ddt.data(
-        ('/api/v2/coupons/preview/', 400),
-        ('/api/v2/coupons/preview/?query=', 400),
-        ('/api/v2/coupons/preview/?wrong=parameter', 400),
-        ('/api/v2/coupons/preview/?query=id:course*', 200)
-    )
-    @ddt.unpack
-    @mock.patch(
-        'ecommerce.extensions.api.v2.views.catalog.get_course_catalog_api_client',
-        mock.Mock(return_value=EdxRestApiClient(
-            settings.COURSE_CATALOG_API_URL,
-            jwt='auth-token'
-        ))
-    )
-    def test_preview_catalog_query_results(self, url, status_code):
-        """Test catalog query preview."""
-        self.mock_dynamic_catalog_course_runs_api()
-
-        request = self.prepare_request(url)
-        response = CatalogViewSet().preview(request)
-
-        self.assertEqual(response.status_code, status_code)
-
     @ddt.data(ConnectionError, SlumberBaseException, Timeout)
-    @mock.patch(
-        'ecommerce.extensions.api.v2.views.catalog.get_course_catalog_api_client',
-        mock.Mock(return_value=EdxRestApiClient(
-            settings.COURSE_CATALOG_API_URL,
-            jwt='auth-token'
-        ))
-    )
     def test_preview_catalog_course_discovery_service_not_available(self, error):
         """Test catalog query preview when course discovery is not available."""
         url = '/api/v2/coupons/preview/?query=id:course*'

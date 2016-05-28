@@ -3,7 +3,6 @@ import json
 from urlparse import urljoin
 
 import httpretty
-import mock
 from django.test import RequestFactory
 
 from ecommerce.extensions.api.authentication import BearerAuthentication
@@ -31,19 +30,17 @@ class BearerAuthenticationTests(TestCase):
     def setUp(self):
         super(BearerAuthenticationTests, self).setUp()
         self.auth = BearerAuthentication()
-        self.factory = RequestFactory()
+        self.auth.request = self.create_request()
 
     def create_request(self, token=AccessTokenMixin.DEFAULT_TOKEN):
         """ Returns a Request with the correct authorization header and Site. """
         auth_header = 'Bearer {}'.format(token)
-        request = self.factory.get('/', HTTP_AUTHORIZATION=auth_header)
+        request = RequestFactory().get('/', HTTP_AUTHORIZATION=auth_header)
         request.site = self.site
         return request
 
     def test_get_user_info_url(self):
         """ Verify the method returns a user info URL specific to the Site's LMS instance. """
-        request = self.create_request()
-        with mock.patch('ecommerce.extensions.order.utils.get_current_request', mock.Mock(return_value=request)):
-            actual = self.auth.get_user_info_url()
-            expected = urljoin(self.site.siteconfiguration.lms_url_root, '/oauth2/user_info/')
-            self.assertEqual(actual, expected)
+        actual = self.auth.get_user_info_url()
+        expected = urljoin(self.site.siteconfiguration.lms_url_root, '/oauth2/user_info/')
+        self.assertEqual(actual, expected)

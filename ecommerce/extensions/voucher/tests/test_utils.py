@@ -5,7 +5,6 @@ from django.utils.translation import ugettext_lazy as _
 from oscar.templatetags.currency_filters import currency
 from oscar.test.factories import *  # pylint:disable=wildcard-import,unused-wildcard-import
 
-from ecommerce.core.url_utils import get_ecommerce_url
 from ecommerce.coupons.tests.mixins import CouponMixin
 from ecommerce.courses.tests.factories import CourseFactory
 from ecommerce.extensions.catalogue.tests.mixins import CourseCatalogTestMixin
@@ -259,7 +258,7 @@ class UtilTests(CouponMixin, CourseCatalogTestMixin, LmsApiMockMixin, TestCase):
         self.assertEqual(row['Client'], coupon.client.name)
         self.assertEqual(
             row['URL'],
-            get_ecommerce_url() + self.REDEMPTION_URL.format(voucher.code)
+            self.site.siteconfiguration.build_ecommerce_url() + self.REDEMPTION_URL.format(voucher.code)
         )
         self.assertEqual(row['Note'], coupon.attr.note)
         self.assertEqual(row['Created By'], coupon.history.first().history_user.full_name)

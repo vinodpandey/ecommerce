@@ -1,15 +1,15 @@
 from __future__ import unicode_literals
+
 import json
 import logging
 
+import requests
 from django.conf import settings
 from django.utils.translation import ugettext_lazy as _
 from edx_rest_api_client.client import EdxRestApiClient
 from edx_rest_api_client.exceptions import SlumberHttpBaseException
 from oscar.core.loading import get_model
-import requests
 
-from ecommerce.core.url_utils import get_lms_url, get_lms_commerce_api_url
 from ecommerce.courses.utils import mode_for_seat
 
 logger = logging.getLogger(__name__)
@@ -19,6 +19,10 @@ StockRecord = get_model('partner', 'StockRecord')
 
 class LMSPublisher(object):
     timeout = settings.COMMERCE_API_TIMEOUT
+
+    def __init__(self, commerce_api_url, credit_api_url):
+        self.commerce_api_url = commerce_api_url.rstrip('/')
+        self.credit_api_url = credit_api_url.rstrip('/')
 
     def get_seat_expiration(self, seat):
         if not seat.expires or 'professional' in getattr(seat.attr, 'certificate_type', ''):
@@ -49,11 +53,7 @@ class LMSPublisher(object):
     def _publish_creditcourse(self, course_id, access_token):
         """Creates or updates a CreditCourse object on the LMS."""
 
-        api = EdxRestApiClient(
-            get_lms_url('api/credit/v1/'),
-            oauth_access_token=access_token,
-            timeout=self.timeout
-        )
+        api = EdxRestApiClient(self.credit_api_url, oauth_access_token=access_token, timeout=self.timeout)
 
         data = {
             'course_key': course_id,
@@ -82,11 +82,6 @@ class LMSPublisher(object):
         error_message = _(u'Failed to publish commerce data for {course_id} to LMS.').format(
             course_id=course_id
         )
-
-        commerce_api_url = get_lms_commerce_api_url()
-        if not commerce_api_url:
-            logger.error('Commerce API URL is not set. Commerce data will not be published!')
-            return error_message
 
         name = course.name
         verification_deadline = self.get_course_verification_deadline(course)
@@ -119,7 +114,7 @@ class LMSPublisher(object):
             'modes': modes,
         }
 
-        url = '{}/courses/{}/'.format(commerce_api_url.rstrip('/'), course_id)
+        url = '{}/courses/{}/'.format(self.commerce_api_url, course_id)
 
         headers = {
             'Content-Type': 'application/json',

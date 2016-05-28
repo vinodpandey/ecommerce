@@ -73,7 +73,7 @@ class CouponViewSet(EdxOrderPlacementMixin, viewsets.ModelViewSet):
         with transaction.atomic():
             title = request.data[AC.KEYS.TITLE]
             client_username = request.data[AC.KEYS.CLIENT_USERNAME]
-            stock_record_ids = request.data.get(AC.KEYS.STOCK_RECORD_IDS, None)
+            stock_record_ids = request.data.get(AC.KEYS.STOCK_RECORD_IDS)
             start_date = dateutil.parser.parse(request.data[AC.KEYS.START_DATE])
             end_date = dateutil.parser.parse(request.data[AC.KEYS.END_DATE])
             code = request.data[AC.KEYS.CODE]
@@ -266,8 +266,7 @@ class CouponViewSet(EdxOrderPlacementMixin, viewsets.ModelViewSet):
         )
 
         # Invoice payment processor invocation.
-        payment_processor = InvoicePayment
-        payment_processor().handle_processor_response(response={}, order=order, business_client=client)
+        InvoicePayment(self.request.site).handle_processor_response(response={}, order=order, business_client=client)
         response_data[AC.KEYS.PAYMENT_DATA] = {
             AC.KEYS.PAYMENT_PROCESSOR_NAME: 'Invoice'
         }

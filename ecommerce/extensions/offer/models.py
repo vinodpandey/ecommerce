@@ -1,10 +1,12 @@
-# noinspection PyUnresolvedReferences
+import logging
+
 from django.db import models
 from oscar.apps.offer.abstract_models import AbstractRange
 from threadlocals.threadlocals import get_current_request
 
-from ecommerce.core.url_utils import get_course_catalog_api_client
 from ecommerce.coupons.utils import get_seats_from_query
+
+log = logging.getLogger(__name__)
 
 
 class Range(AbstractRange):
@@ -18,12 +20,14 @@ class Range(AbstractRange):
         """
         request = get_current_request()
         try:
-            response = get_course_catalog_api_client(request.site).course_runs.contains.get(
+            response = request.site.siteconfiguration.course_catalog_api_client.course_runs.contains.get(
                 query=self.catalog_query,
                 course_run_ids=product.course_id
             )
         except:  # pylint: disable=bare-except
-            raise Exception('Could not contact Course Catalog Service.')
+            log.exception('Could not contact Course Catalog Service.')
+            raise
+
         return response
 
     def contains_product(self, product):
@@ -55,5 +59,6 @@ class Range(AbstractRange):
             catalog_products = [record.product for record in self.catalog.stock_records.all()]
             return catalog_products + list(super(Range, self).all_products())  # pylint: disable=bad-super-call
         return super(Range, self).all_products()  # pylint: disable=bad-super-call
+
 
 from oscar.apps.offer.models import *  # noqa pylint: disable=wildcard-import,unused-wildcard-import,wrong-import-position,wrong-import-order,ungrouped-imports

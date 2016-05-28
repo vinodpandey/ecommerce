@@ -14,7 +14,6 @@ from rest_framework.reverse import reverse
 import waffle
 
 from ecommerce.core.constants import ISO_8601_FORMAT, COURSE_ID_REGEX
-from ecommerce.core.url_utils import get_ecommerce_url
 from ecommerce.courses.models import Course
 from ecommerce.coupons.utils import get_seats_from_query
 from ecommerce.invoice.models import Invoice
@@ -319,7 +318,7 @@ class AtomicPublicationSerializer(serializers.Serializer):  # pylint: disable=ab
                         credit_hours=credit_hours,
                     )
 
-                resp_message = course.publish_to_lms(access_token=self.access_token)
+                resp_message = course.publish_to_lms(self.context['request'].site, access_token=self.access_token)
                 published = (resp_message is None)
 
                 if published:
@@ -390,7 +389,8 @@ class VoucherSerializer(serializers.ModelSerializer):
         return (obj.offers.first().benefit.type, obj.offers.first().benefit.value)
 
     def get_redeem_url(self, obj):
-        url = get_ecommerce_url('/coupons/offer/')
+        request = self.context.get('request')
+        url = request.site.siteconfiguration.build_ecommerce_url('/coupons/offer/')
         return '{url}?code={code}'.format(url=url, code=obj.code)
 
     class Meta(object):

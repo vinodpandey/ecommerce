@@ -20,7 +20,6 @@ from paypalrestsdk.resource import Resource
 from testfixtures import LogCapture
 
 from ecommerce.core.tests import toggle_switch
-from ecommerce.core.url_utils import get_ecommerce_url
 from ecommerce.extensions.payment.models import PaypalWebProfile
 from ecommerce.extensions.payment.processors.paypal import Paypal
 from ecommerce.extensions.payment.tests.mixins import PaypalMixin
@@ -61,9 +60,6 @@ class PaypalTests(PaypalMixin, PaymentProcessorTestCaseMixin, TestCase):
         })
 
     def setUp(self):
-        """
-        setUp method
-        """
         super(PaypalTests, self).setUp()
 
         # Dummy request from which an HTTP Host header can be extracted during
@@ -107,7 +103,7 @@ class PaypalTests(PaypalMixin, PaymentProcessorTestCaseMixin, TestCase):
         self.assert_processor_response_recorded(self.processor.NAME, self.PAYMENT_ID, response, basket=self.basket)
 
         last_request_body = json.loads(httpretty.last_request().body)
-        expected = urljoin(get_ecommerce_url(), reverse('paypal_execute'))
+        expected = urljoin(self.site.siteconfiguration.build_ecommerce_url(), reverse('paypal_execute'))
         self.assertEqual(last_request_body['redirect_urls']['return_url'], expected)
 
     @httpretty.activate

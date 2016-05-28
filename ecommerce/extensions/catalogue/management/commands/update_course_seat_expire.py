@@ -1,4 +1,5 @@
 from __future__ import unicode_literals
+
 import logging
 import time
 from optparse import make_option
@@ -6,13 +7,13 @@ from optparse import make_option
 from dateutil import parser
 from django.core.management import BaseCommand, CommandError
 from edx_rest_api_client.client import EdxRestApiClient
+from oscar.core.loading import get_model
 from slumber.exceptions import HttpClientError
 
-from ecommerce.core.url_utils import get_lms_url
 from ecommerce.courses.models import Course
 
-
 logger = logging.getLogger(__name__)
+Partner = get_model('partner', 'Partner')
 
 
 class Command(BaseCommand):
@@ -20,12 +21,19 @@ class Command(BaseCommand):
 
     help = 'Update seat expire with the course enrollment end date.'
     option_list = BaseCommand.option_list + (
-        make_option('--commit',
-                    action='store_true',
-                    dest='commit',
-                    default=False,
-                    help='Save the data to the database. If this is not set, '
-                         'expires date will not be updated'),
+        make_option(
+            '--commit',
+            action='store_true',
+            dest='commit',
+            default=False,
+            help='Save the data to the database. If this is not set, '
+                 'expires date will not be updated'),
+        make_option(
+            '--partner-code',
+            action='store',
+            dest='partner_code',
+            type=str,
+            help='Partner code for the Site whose courses should be updated.'),
     )
 
     ch = logging.StreamHandler()
@@ -38,7 +46,8 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         seats_to_update = ['honor', 'audit', 'no-id-professional', 'professional']
         save_to_db = options.get('commit', False)
-        courses_enrollment_info = self._get_courses_enrollment_info()
+        site_configuration = Partner.objects.get(code__iexact=options['partner_code']).siteconfiguration_set.first()
+        courses_enrollment_info = self._get_courses_enrollment_info(site_configuration)
 
         if not courses_enrollment_info:
             msg = 'No course enrollment information found.'
@@ -69,13 +78,17 @@ class Command(BaseCommand):
                     ', '.join([str(seat.id) for seat in course_seats]),
                 )
 
-    def _get_courses_enrollment_info(self):
+    def _get_courses_enrollment_info(self, site_configuration):
         """
         Retrieve the enrollment information for all the courses.
+
+        Arguments:
+            site_configuration (SiteConfiguration): Configuration for the site whose courses should be updated.
 
         Returns:
             Dictionary representing the key-value pair (course_key, enrollment_end) of course.
         """
+
         def _parse_response(api_response):
             response_data = api_response.get('results', [])
 
@@ -87,7 +100,7 @@ class Command(BaseCommand):
             return courses_enrollment, api_response['pagination'].get('next', None)
 
         querystring = {'page_size': 50}
-        api = EdxRestApiClient(get_lms_url('api/courses/v1/'))
+        api = EdxRestApiClient(site_configuration.build_lms_url('api/courses/v1/'))
         course_enrollments = {}
 
         page = 0

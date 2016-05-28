@@ -1,25 +1,26 @@
 from __future__ import unicode_literals
+
 import logging
 from optparse import make_option
 
-from dateutil.parser import parse
-from django.conf import settings
-from django.contrib.sites.models import Site
-from django.core.management import BaseCommand
-from django.db import transaction
 import requests
 import waffle
+from dateutil.parser import parse
+from django.conf import settings
+from django.core.management import BaseCommand
+from django.db import transaction
+from oscar.core.loading import get_model
 
 from ecommerce.courses.models import Course
 
-
 logger = logging.getLogger(__name__)
+Partner = get_model('partner', 'Partner')
 
 
 class MigratedCourse(object):
-    def __init__(self, course_id, site_domain):
+    def __init__(self, course_id, site_configuration):
         self.course, _created = Course.objects.get_or_create(id=course_id)
-        self.site_configuration = Site.objects.get(domain=site_domain).siteconfiguration
+        self.site_configuration = site_configuration
 
     def load_from_lms(self, access_token):
         """
@@ -154,41 +155,47 @@ class Command(BaseCommand):
     help = 'Migrate course modes and pricing from LMS to Oscar.'
 
     option_list = BaseCommand.option_list + (
-        make_option('--access_token',
-                    action='store',
-                    dest='access_token',
-                    default=None,
-                    help='OAuth2 access token used to authenticate against some LMS APIs.'),
-        make_option('--commit',
-                    action='store_true',
-                    dest='commit',
-                    default=False,
-                    help='Save the migrated data to the database. If this is not set, '
-                         'migrated data will NOT be saved to the database.'),
-        make_option('--site',
-                    action='store',
-                    dest='site_domain',
-                    default=None,
-                    help='Domain for the ecommerce site providing the course.'),
+        make_option(
+            '--access_token',
+            action='store',
+            dest='access_token',
+            default=None,
+            help='OAuth2 access token used to authenticate against some LMS APIs.'),
+        make_option(
+            '--commit',
+            action='store_true',
+            dest='commit',
+            default=False,
+            help='Save the migrated data to the database. If this is not set, '
+                 'migrated data will NOT be saved to the database.'),
+        make_option(
+            '--partner-code',
+            action='store',
+            dest='partner_code',
+            type=str,
+            help='Partner code for the Site whose courses should be updated.'),
     )
 
     def handle(self, *args, **options):
         course_ids = args
         access_token = options.get('access_token')
-        site_domain = options.get('site_domain')
-        if not access_token:
-            logger.error('Courses cannot be migrated if no access token is supplied.')
+        partner_code = options.get('partner_code')
+
+        if not partner_code:
+            logger.error('Courses cannot be migrated without providing a partner code.')
             return
 
-        if not site_domain:
-            logger.error('Courses cannot be migrated without providing a site domain.')
+        site_configuration = Partner.objects.get(code__iexact=partner_code).siteconfiguration_set.first()
+
+        if not access_token:
+            logger.error('Courses cannot be migrated if no access token is supplied.')
             return
 
         for course_id in course_ids:
             course_id = unicode(course_id)
             try:
                 with transaction.atomic():
-                    migrated_course = MigratedCourse(course_id, site_domain)
+                    migrated_course = MigratedCourse(course_id, site_configuration)
                     migrated_course.load_from_lms(access_token)
 
                     course = migrated_course.course
@@ -212,7 +219,7 @@ class Command(BaseCommand):
                     if options.get('commit', False):
                         logger.info('Course [%s] was saved to the database.', course.id)
                         if waffle.switch_is_active('publish_course_modes_to_lms'):
-                            course.publish_to_lms(access_token=access_token)
+                            course.publish_to_lms(site_configuration.site, access_token=access_token)
                         else:
                             logger.info('Data was not published to LMS because the switch '
                                         '[publish_course_modes_to_lms] is disabled.')

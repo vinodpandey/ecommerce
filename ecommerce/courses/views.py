@@ -12,7 +12,6 @@ from edx_rest_api_client.client import EdxRestApiClient
 from requests import Timeout
 from slumber.exceptions import SlumberBaseException
 
-from ecommerce.core.url_utils import get_lms_url
 from ecommerce.core.views import StaffOnlyMixin
 from ecommerce.extensions.partner.shortcuts import get_partner_for_site
 
@@ -48,7 +47,7 @@ class CourseAppView(StaffOnlyMixin, TemplateView):
         if not credit_providers:
             try:
                 credit_api = EdxRestApiClient(
-                    get_lms_url('/api/credit/v1/'),
+                    self.request.site.siteconfiguration.build_lms_url('/api/credit/v1/'),
                     oauth_access_token=self.request.user.access_token
                 )
                 credit_providers = credit_api.providers.get()
@@ -103,7 +102,7 @@ class CourseMigrationView(View):
             course_ids = course_ids.split(',')
 
             call_command('migrate_course', *course_ids, access_token=user.access_token, commit=commit,
-                         partner_short_code=partner.short_code, settings=os.environ['DJANGO_SETTINGS_MODULE'],
+                         partner_code=partner.code, settings=os.environ['DJANGO_SETTINGS_MODULE'],
                          stdout=out, stderr=err)
 
             # Format the output for display

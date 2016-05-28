@@ -10,14 +10,11 @@ from django.contrib.auth import get_user_model
 from django.contrib.sites.models import Site
 from django.core.cache import cache
 from django.core.urlresolvers import reverse
-from django.test.client import RequestFactory
 from mock import patch
 from oscar.core.loading import get_class, get_model
 from oscar.test import factories
 from social.apps.django_app.default.models import UserSocialAuth
-from threadlocals.threadlocals import set_thread_variable
 
-from ecommerce.core.url_utils import get_lms_url
 from ecommerce.courses.utils import mode_for_seat
 from ecommerce.extensions.api.constants import APIConstants as AC
 from ecommerce.extensions.fulfillment.signals import SHIPPING_EVENT_NAME
@@ -262,11 +259,6 @@ class SiteMixin(object):
         self.partner = site_configuration.partner
         self.site = site_configuration.site
 
-        request = RequestFactory().get('')
-        request.session = None
-        request.site = self.site
-        set_thread_variable('request', request)
-
 
 class TestServerUrlMixin(object):
     def get_full_url(self, path, site=None):
@@ -288,7 +280,7 @@ class ApiMockMixin(object):
 
 
 class LmsApiMockMixin(object):
-    """ Mocks for the LMS API reponses. """
+    """ Mocks for the LMS API responses. """
 
     def setUp(self):
         super(LmsApiMockMixin, self).setUp()
@@ -307,5 +299,5 @@ class LmsApiMockMixin(object):
         }
         course_info_json = json.dumps(course_info)
         course_id = course.id if course else 'course-v1:test+test+test'
-        course_url = get_lms_url('api/courses/v1/courses/{}/'.format(course_id))
+        course_url = self.site.siteconfiguration.build_lms_url('api/courses/v1/courses/{}/'.format(course_id))
         httpretty.register_uri(httpretty.GET, course_url, body=course_info_json, content_type='application/json')

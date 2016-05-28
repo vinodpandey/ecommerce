@@ -3,14 +3,18 @@
 from __future__ import unicode_literals
 
 import ddt
-import mock
 from django.conf import settings
+from oscar.core.loading import get_model
 from oscar.test import factories
 
 from ecommerce.courses.models import Course
 from ecommerce.extensions.catalogue.tests.mixins import CourseCatalogTestMixin
 from ecommerce.extensions.payment.tests.mixins import PaymentEventsMixin
 from ecommerce.extensions.refund.tests.mixins import RefundTestMixin
+from ecommerce.extensions.test.factories import create_basket, PartnerFactory
+from ecommerce.tests.factories import SiteConfigurationFactory
+
+Partner = get_model('partner', 'Partner')
 
 
 @ddt.ddt
@@ -26,32 +30,29 @@ class PaymentProcessorTestCaseMixin(RefundTestMixin, CourseCatalogTestMixin, Pay
     CERTIFICATE_TYPE = 'test-certificate-type'
 
     def setUp(self):
-        """
-        setUp method
-        """
         super(PaymentProcessorTestCaseMixin, self).setUp()
 
         self.course = Course.objects.create(id='a/b/c', name='Demo Course')
         self.product = self.course.create_or_update_seat(self.CERTIFICATE_TYPE, False, 20, self.partner)
 
-        self.processor = self.processor_class()  # pylint: disable=not-callable
-        self.basket = factories.create_basket(empty=True)
+        self.processor = self.processor_class(self.site)  # pylint: disable=not-callable
+        self.basket = create_basket(self.site, empty=True)
         self.basket.add_product(self.product)
         self.basket.owner = factories.UserFactory()
         self.basket.save()
 
     @ddt.data('edX', 'other')
-    def test_configuration(self, request_partner):
+    def test_configuration(self, partner_code):
         """ Verifies configuration is read from settings. """
-        mock_request = mock.Mock()
-        mock_request.site.siteconfiguration.partner.short_code = request_partner
-        with mock.patch(
-            'ecommerce.extensions.payment.processors.get_current_request', mock.Mock(return_value=mock_request)
-        ):
-            self.assertDictEqual(
-                self.processor.configuration,
-                settings.PAYMENT_PROCESSOR_CONFIG[request_partner.lower()][self.processor.NAME]
-            )
+        Partner.objects.all().delete()
+        partner = PartnerFactory(short_code=partner_code)
+        site_configuration = SiteConfigurationFactory(partner=partner)
+        processor = self.processor_class(site_configuration.site)   # pylint: disable=not-callable
+
+        self.assertDictEqual(
+            processor.configuration,
+            settings.PAYMENT_PROCESSOR_CONFIG[partner_code.lower()][self.processor.NAME]
+        )
 
     def test_name(self):
         """Test that the name constant on the processor class is correct."""

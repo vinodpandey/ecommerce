@@ -7,7 +7,7 @@ from oscar.test import factories
 from oscar.test.newfactories import UserFactory
 
 from ecommerce.extensions.refund.status import REFUND, REFUND_LINE
-
+from ecommerce.extensions.test.factories import create_order
 
 Category = get_model("catalogue", "Category")
 Partner = get_model('partner', 'Partner')
@@ -23,7 +23,7 @@ class RefundFactory(factory.DjangoModelFactory):
 
     @factory.lazy_attribute
     def order(self):
-        return factories.create_order(user=self.user)
+        return create_order(user=self.user)
 
     @factory.post_generation
     def create_lines(self, create, extracted, **kwargs):  # pylint: disable=unused-argument

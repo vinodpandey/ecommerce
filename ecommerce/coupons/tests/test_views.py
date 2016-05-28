@@ -13,7 +13,6 @@ from oscar.test.factories import (
 )
 from oscar.test.utils import RequestFactory
 
-from ecommerce.core.url_utils import get_lms_url, get_lms_enrollment_api_url
 from ecommerce.coupons.tests.mixins import CouponMixin
 from ecommerce.coupons.views import get_voucher_from_code, voucher_is_valid
 from ecommerce.courses.tests.factories import CourseFactory
@@ -222,7 +221,7 @@ class CouponOfferViewTests(CourseCatalogTestMixin, LmsApiMockMixin, TestCase):
         _range = RangeFactory(products=[seat, ])
         prepare_voucher(code=COUPON_CODE, _range=_range)
 
-        course_url = get_lms_url('api/courses/v1/courses/{}/'.format(course.id))
+        course_url = self.site.siteconfiguration.build_lms_url('api/courses/v1/courses/{}/'.format(course.id))
         httpretty.register_uri(httpretty.GET, course_url, status=404, content_type=CONTENT_TYPE)
 
         response = self.client.get(self.path_with_code)
@@ -317,8 +316,8 @@ class CouponRedeemViewTests(CouponMixin, CourseCatalogTestMixin, LmsApiMockMixin
     def test_basket_redirect_enrollment_code(self):
         """ Verify the view redirects to LMS when an enrollment code is provided. """
         self.create_and_test_coupon()
-        httpretty.register_uri(httpretty.POST, get_lms_enrollment_api_url(), status=200)
-        self.assert_redemption_page_redirects(get_lms_url())
+        httpretty.register_uri(httpretty.POST, self.site.siteconfiguration.enrollment_api_url, status=200)
+        self.assert_redemption_page_redirects(self.site.siteconfiguration.build_lms_url())
 
     @httpretty.activate
     def test_multiple_vouchers(self):
@@ -326,8 +325,8 @@ class CouponRedeemViewTests(CouponMixin, CourseCatalogTestMixin, LmsApiMockMixin
         self.create_and_test_coupon()
         basket = Basket.get_basket(self.user, self.site)
         basket.vouchers.add(Voucher.objects.get(code=COUPON_CODE))
-        httpretty.register_uri(httpretty.POST, get_lms_enrollment_api_url(), status=200)
-        self.assert_redemption_page_redirects(get_lms_url())
+        httpretty.register_uri(httpretty.POST, self.site.siteconfiguration.enrollment_api_url, status=200)
+        self.assert_redemption_page_redirects(self.site.siteconfiguration.build_lms_url())
 
 
 class EnrollmentCodeCsvViewTests(TestCase):
@@ -350,7 +349,7 @@ class EnrollmentCodeCsvViewTests(TestCase):
         order.user = self.create_user()
         response = self.client.get(reverse(self.path, args=[order.number]))
         self.assertEqual(response.status_code, 302)
-        redirect_location = get_lms_url('dashboard')
+        redirect_location = self.site.siteconfiguration.student_dashboard_url
         self.assertEqual(response['location'], redirect_location)
 
     def test_successful_response(self):

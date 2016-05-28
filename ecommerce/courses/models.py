@@ -63,9 +63,11 @@ class Course(models.Model):
         super(Course, self).save(force_insert, force_update, using, update_fields)
         self._create_parent_seat()
 
-    def publish_to_lms(self, access_token=None):
+    def publish_to_lms(self, site, access_token=None):
         """ Publish Course and Products to LMS. """
-        return LMSPublisher().publish(self, access_token=access_token)
+        commerce_api_url = site.siteconfiguration.commerce_api_url
+        credit_api_url = site.siteconfiguration.build_lms_url('api/credit/v1/')
+        return LMSPublisher(commerce_api_url, credit_api_url).publish(self, access_token=access_token)
 
     @classmethod
     def is_mode_verified(cls, mode):

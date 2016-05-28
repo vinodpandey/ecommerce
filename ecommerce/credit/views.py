@@ -14,7 +14,6 @@ from django.views.generic import TemplateView
 from edx_rest_api_client.client import EdxRestApiClient
 from slumber.exceptions import SlumberHttpBaseException
 
-from ecommerce.core.url_utils import get_lms_url
 from ecommerce.courses.models import Course
 from ecommerce.extensions.analytics.utils import prepare_analytics_data
 from ecommerce.extensions.partner.shortcuts import get_partner_for_site
@@ -194,6 +193,6 @@ class Checkout(TemplateView):
         """ Returns an instance of the Credit API client. """
 
         return EdxRestApiClient(
-            get_lms_url('api/credit/v1/'),
+            self.request.site.siteconfiguration.build_lms_url('api/credit/v1/'),
             oauth_access_token=self.request.user.access_token
         )

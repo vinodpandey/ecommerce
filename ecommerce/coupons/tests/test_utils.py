@@ -1,7 +1,5 @@
 import httpretty
 import mock
-from django.conf import settings
-from edx_rest_api_client.client import EdxRestApiClient
 
 from ecommerce.coupons.tests.mixins import CatalogPreviewMockMixin, CouponMixin
 from ecommerce.coupons.utils import get_seats_from_query
@@ -10,13 +8,6 @@ from ecommerce.tests.testcases import TestCase
 
 
 @httpretty.activate
-@mock.patch(
-    'ecommerce.coupons.utils.get_course_catalog_api_client',
-    mock.Mock(return_value=EdxRestApiClient(
-        settings.COURSE_CATALOG_API_URL,
-        jwt='auth-token'
-    ))
-)
 class CouponUtilsTests(CouponMixin, CourseCatalogTestMixin, CatalogPreviewMockMixin, TestCase):
     def setUp(self):
         super(CouponUtilsTests, self).setUp()
@@ -24,6 +15,7 @@ class CouponUtilsTests(CouponMixin, CourseCatalogTestMixin, CatalogPreviewMockMi
         self.seat_type = 'verified'
         self.course_id = 'course-v1:test+test+test'
 
+    @mock.patch('ecommerce.core.models.SiteConfiguration.access_token', mock.Mock(return_value='auth-token'))
     def test_get_seat_from_query(self):
         """ Verify right seat is returned. """
         course, seat = self.create_course_and_seat(course_id=self.course_id)
@@ -31,6 +23,7 @@ class CouponUtilsTests(CouponMixin, CourseCatalogTestMixin, CatalogPreviewMockMi
         response = get_seats_from_query(self.site, self.query, self.seat_type)
         self.assertEqual(seat, response[0])
 
+    @mock.patch('ecommerce.core.models.SiteConfiguration.access_token', mock.Mock(return_value='auth-token'))
     def test_get_seat_from_query_no_product(self):
         """ Verify an empty list is returned for no matched seats. """
         course, __ = self.create_course_and_seat(seat_type='professional', course_id=self.course_id)
