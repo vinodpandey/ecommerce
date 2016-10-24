@@ -1,14 +1,11 @@
 require([
         'jquery',
-        'routers/receipt_router'
+        'pages/receipt_page'
     ],
     function ($,
-              ReceiptRouter) {
+              ReceiptPage) {
         'use strict';
 
-        $(function () {
-            var receiptApp = new ReceiptRouter({$el: $('#receipt-container')});
-            receiptApp.start();
-        });
+        $(document).ready(ReceiptPage.onReady);
     }
 );

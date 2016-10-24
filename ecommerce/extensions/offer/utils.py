@@ -4,7 +4,7 @@ from decimal import Decimal
 from django.utils.translation import ugettext_lazy as _
 from oscar.core.loading import get_model
 
-from ecommerce.extensions.checkout.utils import add_currency
+from ecommerce.extensions.checkout.utils import format_price
 
 Benefit = get_model('offer', 'Benefit')
 
@@ -31,7 +31,7 @@ def get_discount_percentage(discount_value, product_price):
     Returns:
         float: Discount percentage
     """
-    return discount_value / product_price * 100
+    return discount_value / product_price * 100 if product_price > 0 else 0.0
 
 
 def get_discount_value(discount_percentage, product_price):
@@ -60,6 +60,6 @@ def format_benefit_value(benefit):
     if benefit.type == Benefit.PERCENTAGE:
         benefit_value = _('{benefit_value}%'.format(benefit_value=benefit_value))
     else:
-        converted_benefit = add_currency(Decimal(benefit.value))
-        benefit_value = _('${benefit_value}'.format(benefit_value=converted_benefit))
+        # TODO: Fix this; Currency should be a dynamic value;
+        benefit_value = format_price(Decimal(benefit.value), 'USD')
     return benefit_value

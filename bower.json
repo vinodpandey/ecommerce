@@ -19,7 +19,6 @@
     "bootstrap-sass": "~3.3.4",
     "bootstrapaccessibilityplugin": "~1.0.4",
     "datatables": "1.10.10",
-    "date-utils": "1.2.16",
     "edx-ux-pattern-library": "https://github.com/edx/ux-pattern-library.git#82fa1c823bc322ba8b0742f0c546a89b0c69e952",
     "fontawesome": "~4.3.0",
     "jquery": "~1.11.3",

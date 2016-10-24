@@ -1,18 +1,30 @@
+/**
+ * Basket page scripts.
+ **/
+
 define([
-        'views/receipt_view',
-        'pages/page'
+        'jquery'
     ],
-    function (ReceiptView,
-              Page) {
+    function ($
+    ) {
         'use strict';
 
-        return Page.extend({
-            title: gettext('Receipt'),
-
-            initialize: function (options) {
-                this.view = new ReceiptView(options);
-                this.view.render();
+        var el = $('#receipt-container'),
+        onReady = function() {
+            var order_id = el.data('order-id'),
+                data_fire_tracking_events = el.data('fire-tracking-events');
+            if(order_id && data_fire_tracking_events){
+                trackPurchase(order_id);
             }
-        });
+        },
+        trackPurchase = function(order_id) {
+            window.analytics.track('Completed Purchase', {
+                orderId: order_id,
+                total: el.data('total-amount'),
+                currency: el.data('currency')
+            });
+        };
+
+        $(document).ready(onReady);
     }
 );

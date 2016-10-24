@@ -1,24 +1,21 @@
 """ Checkout related views. """
 from __future__ import unicode_literals
+
 from decimal import Decimal
 
-import dateutil.parser
-from django.conf import settings
 from django.contrib.auth.decorators import login_required
-from django.core.urlresolvers import reverse
+from django.http import Http404
+from django.shortcuts import get_object_or_404
 from django.utils.decorators import method_decorator
-from django.utils.translation import ugettext as _
 from django.views.decorators.csrf import csrf_exempt
 from django.views.generic import RedirectView, TemplateView
 from oscar.apps.checkout.views import *  # pylint: disable=wildcard-import, unused-wildcard-import
 from oscar.core.loading import get_class, get_model
 
-from ecommerce.extensions.api.serializers import OrderSerializer
+from ecommerce.core.url_utils import get_lms_url
 from ecommerce.extensions.checkout.exceptions import BasketNotFreeError
 from ecommerce.extensions.checkout.mixins import EdxOrderPlacementMixin
-from ecommerce.extensions.checkout.utils import add_currency, get_credit_provider_details, get_receipt_page_url
-from ecommerce.extensions.offer.utils import get_discount_percentage
-from ecommerce.extensions.payment.models import PaymentProcessorResponse
+from ecommerce.extensions.checkout.utils import get_receipt_page_url
 
 Applicator = get_class('offer.utils', 'Applicator')
 Basket = get_model('basket', 'Basket')
@@ -122,159 +119,83 @@ class CheckoutErrorView(TemplateView):
         return context
 
 
-class ReceiptResponseView(TemplateView):
+class ReceiptResponseView(ThankYouView):
     """ Handles behavior needed to display an order receipt. """
+    template_name = 'edx/checkout/receipt.html'
 
-    template_name = 'checkout/receipt.html'
-
-    @method_decorator(csrf_exempt)
     @method_decorator(login_required)
     def dispatch(self, *args, **kwargs):
         """
-        Customers should only be able to view their receipts when logged in. To avoid blocking responses
-        from payment processors which POST back to the page, the view must be CSRF-exempt.
+        Customers should only be able to view their receipts when logged in.
         """
         return super(ReceiptResponseView, self).dispatch(*args, **kwargs)
 
     def get(self, request, *args, **kwargs):
-        context = self.get_context_data(**kwargs)
-
-        order_number = self.request.GET.get('order_number')
-        if order_number:
-            try:
-                order = Order.objects.get(number=order_number, user=self.request.user)
-            except Order.DoesNotExist:
-                context.update({
-                    'error_text': _('Order {order_number} not found.').format(order_number=order_number),
-                    'for_help_text': '',
-                    'is_payment_complete': False,
-                    'page_title': _('Order not found')
-                })
-                return self.render_to_response(context)
-
-            seat = order.lines.first().product
-            site_configuration = self.request.site.siteconfiguration
-            course = site_configuration.course_catalog_api_client.course_runs(seat.attr.course_key).get()
-            provider_data = None
-            if seat.attr.certificate_type == 'credit':
-                provider_data = get_credit_provider_details(
-                    access_token=self.request.user.access_token,
-                    credit_provider_id=seat.attr.credit_provider,
-                    site_configuration=site_configuration
-                )
-
-            order_data = OrderSerializer(order, context={'request': self.request}).data
-            discount_value = float(order_data['discount'])
-            total_cost = float(order_data['total_excl_tax'])
-            original_cost = discount_value + total_cost
-
-            try:
-                processor_response = PaymentProcessorResponse.objects.filter(basket=order.basket).latest()
-                if processor_response and processor_response.processor_name == 'paypal':
-                    payer_info = processor_response.response['payer']['payer_info']
-                    shipping_address = payer_info.get('shipping_address')
-                    recipient_info = {
-                        'first_name': payer_info.get('first_name'),
-                        'last_name': payer_info.get('last_name'),
-                        'city': shipping_address.get('city'),
-                        'state': shipping_address.get('state'),
-                        'postal_code': shipping_address.get('postal_code'),
-                        'country': shipping_address.get('country_code')
-                    }
-                elif processor_response and processor_response.processor_name == 'cybersource':
-                    response = processor_response.response
-                    recipient_info = {
-                        'first_name': response.get('req_bill_to_forename'),
-                        'last_name': response.get('req_bill_to_surname'),
-                        'city': response.get('req_bill_to_address_city'),
-                        'state': response.get('req_bill_to_address_state'),
-                        'postal_code': response.get('req_bill_to_address_postal_code'),
-                        'country': response.get('req_bill_to_address_country')
-                    }
-                else:
-                    recipient_info = None
-            except (PaymentProcessorResponse.DoesNotExist, KeyError):
-                recipient_info = None
-
-            receipt = {
-                'billed_to': recipient_info,
-                'currency': settings.OSCAR_DEFAULT_CURRENCY,
-                'discount': add_currency(discount_value),
-                'discount_percentage': get_discount_percentage(
-                    discount_value=discount_value,
-                    product_price=original_cost
-                ),
-                'email': order.user.email,
-                'is_refunded': False,
-                'items': [{
-                    'description': line['description'],
-                    'cost': add_currency(float(line['line_price_excl_tax'])),
-                    'quantity': line['quantity']
-                } for line in order_data['lines']],
-                'order_number': order.number,
-                'original_cost': add_currency(original_cost),
-                'payment_processor': order_data['payment_processor'],
-                'purchased_datetime': dateutil.parser.parse(order_data['date_placed']).strftime('%d. %B %Y'),
-                'total_cost': add_currency(total_cost),
-                'vouchers': order_data['vouchers']
+        try:
+            return super(ReceiptResponseView, self).get(request, *args, **kwargs)
+        except Http404:
+            self.template_name = 'edx/checkout/receipt_not_found.html'
+            context = {
+                'order_history_url': request.site.siteconfiguration.build_lms_url('account/settings'),
             }
-
-            context.update({
-                'course': course,
-                'is_verification_required': seat.attr.id_verification_required,
-                'lms_url': order.site.siteconfiguration.lms_url_root,
-                'provider_data': provider_data,
-                'receipt': receipt,
-                'verified': seat.attr.certificate_type == 'verified'
-            })
-        else:
-            context.update({
-                'error_text': _('Order number is invalid.'),
-                'for_help_text': '',
-                'is_payment_complete': False,
-                'page_title': _('Invalid order number')
-            })
-
-        return self.render_to_response(context)
-
-    def post(self, request, *args, **kwargs):  # pylint: disable=unused-argument
-        context = self.get_context_data(**kwargs)
-        # CyberSource responses will indicate whether a payment failed due to a transaction on their end. In this case,
-        # we can provide the learner more detailed information in the error message.
-        if request.POST['decision'] != 'ACCEPT':
-            context.update({
-                'is_payment_complete': False,
-                'page_title': _('Payment Failed'),
-                'error_summary': _('A system error occurred while processing your payment. You have not been charged.'),
-                'error_text': _('Please wait a few minutes and then try again.'),
-                'for_help_text': _(
-                    'For help, contact {payment_support_link}.'
-                ).format(payment_support_link=context['payment_support_link'])
-            })
-        return self.render_to_response(context)
+            return self.render_to_response(context=context, status=404)
 
     def get_context_data(self, **kwargs):
         context = super(ReceiptResponseView, self).get_context_data(**kwargs)
-
-        payment_support_email = self.request.site.siteconfiguration.payment_support_email
-        payment_support_link = '<a href="mailto:{email}">{email}</a>'.format(email=payment_support_email)
-
+        order = context[self.context_object_name]
         context.update({
-            'dashboard': get_lms_url('/dashboard'),
-            'error_summary': _('An error occurred while creating your receipt.'),
-            'error_text': None,
-            'for_help_text': _(
-                "If your course does not appear on your dashboard, contact {payment_support_link}."
-            ).format(payment_support_link=payment_support_link),
-            'is_payment_complete': True,
-            'lms_url': get_lms_url(),
-            'name': '{} {}'.format(self.request.user.first_name, self.request.user.last_name),
-            'nav_hidden': True,
-            'page_title': _('Receipt'),
-            'payment_support_email': payment_support_email,
-            'payment_support_link': payment_support_link,
-            'platform_name': settings.SITE_NAME,
-            'verify_link': get_lms_url('/verify_student/verify-now/')
+            'payment_method': self.get_payment_method(order),
+            'fire_tracking_events': self.request.session.pop('fire_tracking_events', False),
+            'display_credit_messaging': self.order_contains_credit_seat(order),
         })
+        context.update(self.get_order_verification_context(order))
+        return context
+
+    def get_object(self):
+        kwargs = {
+            'number': self.request.GET['order_number'],
+            'site': self.request.site,
+        }
+
+        user = self.request.user
+        if not user.is_staff:
+            kwargs['user'] = user
+
+        return get_object_or_404(Order, **kwargs)
+
+    def get_payment_method(self, order):
+        source = order.sources.first()
+        if source:
+            if source.card_type:
+                return '{type} {number}'.format(
+                    type=source.get_card_type_display(),
+                    number=source.label
+                )
+            return source.source_type.name
+        return None
+
+    def order_contains_credit_seat(self, order):
+        for line in order.lines.all():
+            if getattr(line.product.attr, 'credit_provider', None):
+                return True
+        return False
+
+    def get_order_verification_context(self, order):
+        context = {}
+        verified_course_id = None
+
+        # NOTE: Only display verification and credit completion details to the user who actually placed the order.
+        if self.request.user == order.user:
+            for line in order.lines.all():
+                product = line.product
+
+                if not verified_course_id and getattr(product.attr, 'id_verification_required', False):
+                    verified_course_id = product.attr.course_key
+
+            if verified_course_id:
+                context.update({
+                    'verified_course_id': verified_course_id,
+                    'user_verified': self.request.user.is_verified(self.request),
+                })
 
         return context

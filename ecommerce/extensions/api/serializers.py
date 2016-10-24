@@ -14,6 +14,8 @@ from rest_framework import serializers
 from rest_framework.reverse import reverse
 import waffle
 
+from ecommerce.extensions.checkout.utils import format_price
+from ecommerce.extensions.offer.utils import get_discount_percentage
 from ecommerce.core.constants import ISO_8601_FORMAT, COURSE_ID_REGEX
 from ecommerce.core.models import Site, SiteConfiguration
 from ecommerce.core.url_utils import get_ecommerce_url
@@ -203,7 +205,15 @@ class LineSerializer(serializers.ModelSerializer):
 
     class Meta(object):
         model = Line
-        fields = ('title', 'quantity', 'description', 'status', 'line_price_excl_tax', 'unit_price_excl_tax', 'product')
+        fields = (
+            'description',
+            'line_price_excl_tax',
+            'product',
+            'quantity',
+            'status',
+            'title',
+            'unit_price_excl_tax'
+        )
 
 
 class OrderSerializer(serializers.ModelSerializer):
@@ -211,10 +221,33 @@ class OrderSerializer(serializers.ModelSerializer):
     billing_address = BillingAddressSerializer(allow_null=True)
     date_placed = serializers.DateTimeField(format=ISO_8601_FORMAT)
     discount = serializers.SerializerMethodField()
+    discount_percentage = serializers.SerializerMethodField()
     lines = LineSerializer(many=True)
     payment_processor = serializers.SerializerMethodField()
+    original_price = serializers.SerializerMethodField()
     user = UserSerializer()
     vouchers = serializers.SerializerMethodField()
+
+    def get_discount(self, obj):
+        try:
+            return float(obj.discounts.first().amount)
+        except IndexError:
+            return 0.0
+
+    def get_discount_percentage(self, obj):
+        return get_discount_percentage(
+            discount_value=self.get_discount(obj),
+            product_price=self.get_original_price(obj)
+        )
+
+    def get_original_price(self, obj):
+        return float(obj.total_excl_tax) + self.get_discount(obj)
+
+    def get_payment_processor(self, obj):
+        try:
+            return obj.sources.first().source_type.name
+        except IndexError:
+            return None
 
     def get_vouchers(self, obj):
         try:
@@ -225,19 +258,6 @@ class OrderSerializer(serializers.ModelSerializer):
         except (AttributeError, ValueError):
             return None
 
-    def get_payment_processor(self, obj):
-        try:
-            return obj.sources.all()[0].source_type.name
-        except IndexError:
-            return None
-
-    def get_discount(self, obj):
-        try:
-            discount = obj.discounts.all()[0]
-            return str(discount.amount)
-        except IndexError:
-            return '0'
-
     class Meta(object):
         model = Order
         fields = (
@@ -245,8 +265,10 @@ class OrderSerializer(serializers.ModelSerializer):
             'currency',
             'date_placed',
             'discount',
+            'discount_percentage',
             'lines',
             'number',
+            'original_price',
             'payment_processor',
             'status',
             'total_excl_tax',
