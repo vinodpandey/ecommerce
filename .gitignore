@@ -41,7 +41,6 @@ htmlcov
 nosetests.xml
 unittests.xml
 acceptance_tests/xunit.xml
-*.log
 
 ### Internationalization artifacts
 *.mo
