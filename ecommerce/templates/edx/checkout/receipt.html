@@ -95,7 +95,7 @@
                       <tr class="vouchers">
                         <td colspan="3">
                           {% for voucher in order.basket.vouchers.all %}
-                            <div class="voucher-info">{% trans "Coupons applied" %}:
+                            <div class="voucher-info">{% trans "Coupon applied" %}:
                               <span class="voucher-code">{{ voucher.code }}</span>
                               <span class="discount">-{{ order.total_discount_incl_tax|currency:order.currency }}</span>
                             </div>
