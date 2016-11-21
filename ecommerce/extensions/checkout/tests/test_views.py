@@ -159,22 +159,6 @@ class ReceiptResponseViewTests(CourseCatalogMockMixin, LmsApiMockMixin, RefundTe
         self.user = self.create_user()
         self.client.login(username=self.user.username, password=self.password)
 
-    def _get_cybersource_response(self, decision):
-        """
-        Helper function used in tests to make a post request with CyberSource response.
-
-        Arguments:
-            decision (str): Decision returned by CyberSource.
-
-        Returns:
-            TemplateResponse: Response of the POST Request to the ReceiptView.
-        """
-        return self.client.post(
-            self.path,
-            params={'basket_id': 1},
-            data={'decision': decision, 'reason_code': '200', 'signed_field_names': 'dummy'}
-        )
-
     def _visit_receipt_page_with_another_user(self, order, user):
         """
         Helper function for logging in with another user and going to the Receipt Page.
@@ -225,7 +209,7 @@ class ReceiptResponseViewTests(CourseCatalogMockMixin, LmsApiMockMixin, RefundTe
 
         order = self.create_order()
         self.mock_verification_status_api(
-            self.request,
+            self.site,
             self.user,
             status=200,
             is_verified=False
@@ -243,7 +227,7 @@ class ReceiptResponseViewTests(CourseCatalogMockMixin, LmsApiMockMixin, RefundTe
         self.assertDictContainsSubset(context_data, response.context_data)
 
         self.mock_verification_status_api(
-            self.request,
+            self.site,
             staff_user,
             status=200,
             is_verified=False
@@ -253,7 +237,7 @@ class ReceiptResponseViewTests(CourseCatalogMockMixin, LmsApiMockMixin, RefundTe
         self.assertDictContainsSubset(context_data, response.context_data)
 
         self.mock_verification_status_api(
-            self.request,
+            self.site,
             other_user,
             status=200,
             is_verified=False
@@ -280,7 +264,7 @@ class ReceiptResponseViewTests(CourseCatalogMockMixin, LmsApiMockMixin, RefundTe
         )
 
         self.mock_verification_status_api(
-            self.request,
+            self.site,
             self.user,
             status=200,
             is_verified=True

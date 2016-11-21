@@ -205,15 +205,7 @@ class LineSerializer(serializers.ModelSerializer):
 
     class Meta(object):
         model = Line
-        fields = (
-            'description',
-            'line_price_excl_tax',
-            'product',
-            'quantity',
-            'status',
-            'title',
-            'unit_price_excl_tax'
-        )
+        fields = ('title', 'quantity', 'description', 'status', 'line_price_excl_tax', 'unit_price_excl_tax', 'product')
 
 
 class OrderSerializer(serializers.ModelSerializer):
@@ -221,10 +213,8 @@ class OrderSerializer(serializers.ModelSerializer):
     billing_address = BillingAddressSerializer(allow_null=True)
     date_placed = serializers.DateTimeField(format=ISO_8601_FORMAT)
     discount = serializers.SerializerMethodField()
-    discount_percentage = serializers.SerializerMethodField()
     lines = LineSerializer(many=True)
     payment_processor = serializers.SerializerMethodField()
-    original_price = serializers.SerializerMethodField()
     user = UserSerializer()
     vouchers = serializers.SerializerMethodField()
 
@@ -233,15 +223,6 @@ class OrderSerializer(serializers.ModelSerializer):
             return float(obj.discounts.first().amount)
         except IndexError:
             return 0.0
-
-    def get_discount_percentage(self, obj):
-        return get_discount_percentage(
-            discount_value=self.get_discount(obj),
-            product_price=self.get_original_price(obj)
-        )
-
-    def get_original_price(self, obj):
-        return float(obj.total_excl_tax) + self.get_discount(obj)
 
     def get_payment_processor(self, obj):
         try:
@@ -265,10 +246,8 @@ class OrderSerializer(serializers.ModelSerializer):
             'currency',
             'date_placed',
             'discount',
-            'discount_percentage',
             'lines',
             'number',
-            'original_price',
             'payment_processor',
             'status',
             'total_excl_tax',

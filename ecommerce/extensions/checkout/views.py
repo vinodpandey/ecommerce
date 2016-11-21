@@ -195,7 +195,7 @@ class ReceiptResponseView(ThankYouView):
             if verified_course_id:
                 context.update({
                     'verified_course_id': verified_course_id,
-                    'user_verified': self.request.user.is_verified(self.request),
+                    'user_verified': self.request.user.is_verified(self.request.site),
                 })
 
         return context
