@@ -10,7 +10,9 @@ define([
         describe('Receipt Page', function () {
             beforeEach(function () {
                 $('<script type="text/javascript">var initModelData = {};</script>').appendTo('body');
-                $('<div id="receipt-container" data-fire-tracking-events="true"></div>').appendTo('body');
+                $(
+                    '<div id="receipt-container" data-fire-tracking-events="true" data-order-id="ORDER_ID"></div>'
+                ).appendTo('body');
                 AnalyticsUtils.analyticsSetUp();
 
                 /* jshint ignore:start */
@@ -22,9 +24,6 @@ define([
 
             describe('onReady', function () {
                 it('should trigger track purchase', function () {
-                    spyOn($, 'url').and.callFake(function() {
-                        return 'ORDER_ID';
-                    });
                     spyOn(window.analytics, 'track');
 
                     ReceiptPage.onReady();

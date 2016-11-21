@@ -219,9 +219,9 @@ class ReceiptResponseViewTests(CourseCatalogMockMixin, LmsApiMockMixin, RefundTe
             path=self.path
         ))
         context_data = {
-            'name': '{} {}'.format(order.user.first_name, order.user.last_name),
-            'page_title': 'Receipt',
-            'providers': []
+            'payment_method': None,
+            'fire_tracking_events': False,
+            'display_credit_messaging': False,
         }
         self.assertEqual(response.status_code, 200)
         self.assertDictContainsSubset(context_data, response.context_data)
@@ -243,7 +243,7 @@ class ReceiptResponseViewTests(CourseCatalogMockMixin, LmsApiMockMixin, RefundTe
             is_verified=False
         )
         response = self._visit_receipt_page_with_another_user(order, other_user)
-        context_data = {'page_title': 'Order not found'}
+        context_data = {'order_history_url': self.site.siteconfiguration.build_lms_url('account/settings')}
         self.assertEqual(response.status_code, 404)
         self.assertDictContainsSubset(context_data, response.context_data)
 
@@ -277,5 +277,4 @@ class ReceiptResponseViewTests(CourseCatalogMockMixin, LmsApiMockMixin, RefundTe
 
         body['course_key'] = seat.attr.course_key
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.context_data['providers'][0], body)
-        self.assertEqual(len(response.context_data['providers']), 1)
+        self.assertTrue(response.context_data['display_credit_messaging'])

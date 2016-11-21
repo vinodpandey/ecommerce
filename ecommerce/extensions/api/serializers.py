@@ -14,8 +14,6 @@ from rest_framework import serializers
 from rest_framework.reverse import reverse
 import waffle
 
-from ecommerce.extensions.checkout.utils import format_price
-from ecommerce.extensions.offer.utils import get_discount_percentage
 from ecommerce.core.constants import ISO_8601_FORMAT, COURSE_ID_REGEX
 from ecommerce.core.models import Site, SiteConfiguration
 from ecommerce.core.url_utils import get_ecommerce_url
@@ -218,18 +216,6 @@ class OrderSerializer(serializers.ModelSerializer):
     user = UserSerializer()
     vouchers = serializers.SerializerMethodField()
 
-    def get_discount(self, obj):
-        try:
-            return float(obj.discounts.first().amount)
-        except IndexError:
-            return 0.0
-
-    def get_payment_processor(self, obj):
-        try:
-            return obj.sources.first().source_type.name
-        except IndexError:
-            return None
-
     def get_vouchers(self, obj):
         try:
             serializer = VoucherSerializer(
@@ -238,6 +224,19 @@ class OrderSerializer(serializers.ModelSerializer):
             return serializer.data
         except (AttributeError, ValueError):
             return None
+
+    def get_payment_processor(self, obj):
+        try:
+            return obj.sources.all()[0].source_type.name
+        except IndexError:
+            return None
+
+    def get_discount(self, obj):
+        try:
+            discount = obj.discounts.all()[0]
+            return str(discount.amount)
+        except IndexError:
+            return '0'
 
     class Meta(object):
         model = Order
