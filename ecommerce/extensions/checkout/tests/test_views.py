@@ -10,6 +10,7 @@ from oscar.test import newfactories as factories
 from ecommerce.coupons.tests.mixins import CourseCatalogMockMixin
 from ecommerce.extensions.checkout.exceptions import BasketNotFreeError
 from ecommerce.extensions.checkout.utils import get_receipt_page_url
+from ecommerce.extensions.checkout.views import ReceiptResponseView
 from ecommerce.extensions.refund.tests.mixins import RefundTestMixin
 from ecommerce.tests.mixins import LmsApiMockMixin
 from ecommerce.tests.testcases import TestCase
@@ -197,6 +198,35 @@ class ReceiptResponseViewTests(CourseCatalogMockMixin, LmsApiMockMixin, RefundTe
             path=self.path
         ))
         self.assertEqual(response.status_code, 404)
+
+    def test_get_payment_method_no_source(self):
+        """ Payment method should be None when an Order has no Payment source. """
+        order = self.create_order()
+        payment_method = ReceiptResponseView().get_payment_method(order)
+        self.assertEqual(payment_method, None)
+
+    def test_get_payment_method_payment_processor(self):
+        """
+        Payment Processor name should be displayed as the Payment method
+        when a Payment Processor was used to process the Order.
+        """
+        order = self.create_order()
+        source = factories.SourceFactory(order=order)
+        payment_method = ReceiptResponseView().get_payment_method(order)
+        self.assertEqual(payment_method, source.source_type.name)
+
+    def test_get_payment_method_credit_card_purchase(self):
+        """
+        Credit card type and Source label should be displayed as the Payment method
+        when a Credit card was used to purchase a product.
+        """
+        order = self.create_order()
+        source = factories.SourceFactory(order=order)
+        source.card_type = 'Dummy Card Type'
+        source.label = 'Dummy Label'
+        source.save()
+        payment_method = ReceiptResponseView().get_payment_method(order)
+        self.assertEqual(payment_method, '{} {}'.format(source.card_type, source.label))
 
     @httpretty.activate
     def test_get_receipt_for_existing_order(self):
