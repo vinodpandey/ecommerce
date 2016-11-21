@@ -30,10 +30,10 @@ class UtilTests(CourseCatalogTestMixin, TestCase):
 
     def test_format_benefit_value(self):
         """ format_benefit_value(benefit) should format benefit value based on benefit type """
-        benefit_value = format_benefit_value(self.percentage_benefit)
+        benefit_value = format_benefit_value(self.percentage_benefit, settings.OSCAR_DEFAULT_CURRENCY)
         self.assertEqual(benefit_value, '35%')
 
-        benefit_value = format_benefit_value(self.value_benefit)
+        benefit_value = format_benefit_value(self.value_benefit, settings.OSCAR_DEFAULT_CURRENCY)
         expected_benefit = format_price(Decimal((self.seat_price - 10)), settings.OSCAR_DEFAULT_CURRENCY)
         self.assertEqual(benefit_value, expected_benefit)
 

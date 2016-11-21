@@ -368,7 +368,7 @@ class BasketSummaryViewTests(CourseCatalogTestMixin, CourseCatalogMockMixin, Lms
         self.assertEqual(response.status_code, 200)
         self.assertEqual(len(response.context['formset_lines_data']), 1)
         line_data = response.context['formset_lines_data'][0][1]
-        self.assertEqual(line_data['benefit_value'], format_benefit_value(benefit))
+        self.assertEqual(line_data['benefit_value'], format_benefit_value(benefit, settings.OSCAR_DEFAULT_CURRENCY))
         self.assertEqual(line_data['seat_type'], _(seat.attr.certificate_type.capitalize()))
         self.assertEqual(line_data['course_name'], self.course.name)
         self.assertFalse(line_data['enrollment_code'])

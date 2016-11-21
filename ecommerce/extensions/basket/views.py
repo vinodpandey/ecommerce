@@ -135,7 +135,7 @@ class BasketSummaryView(BasketView):
 
             if line.has_discount:
                 benefit = basket.applied_offers().values()[0].benefit
-                benefit_value = format_benefit_value(benefit)
+                benefit_value = format_benefit_value(benefit, basket.currency)
             else:
                 benefit_value = None
 

@@ -151,7 +151,7 @@ class Checkout(TemplateView):
             new_price = None
             discount = None
             if code:
-                discount = format_benefit_value(voucher.benefit)
+                discount = format_benefit_value(voucher.benefit, stockrecord.price_currency)
                 if discount_type == 'Percentage':
                     new_price = stockrecord.price_excl_tax - (stockrecord.price_excl_tax * (discount_value / 100))
                 else:

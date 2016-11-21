@@ -178,6 +178,25 @@ class ReceiptResponseViewTests(CourseCatalogMockMixin, LmsApiMockMixin, RefundTe
             path=self.path
         ))
 
+    def _create_order_for_receipt(self, user, credit=False):
+        """
+        Helper function for creating an order and mocking verification status API response.
+
+        Arguments:
+            user (User): User that's trying to visit the Receipt page.
+            credit (bool): Indicates whether or not the product is a Credit Course Seat.
+
+        Returns:
+            order (Order): Order for which the Receipt is requested.
+        """
+        self.mock_verification_status_api(
+            self.site,
+            user,
+            status=200,
+            is_verified=False
+        )
+        return self.create_order(credit=credit)
+
     def test_login_required_post_request(self):
         """ The view should redirect to the login page if the user is not logged in. """
         self.client.logout()
@@ -230,20 +249,8 @@ class ReceiptResponseViewTests(CourseCatalogMockMixin, LmsApiMockMixin, RefundTe
 
     @httpretty.activate
     def test_get_receipt_for_existing_order(self):
-        """
-        Staff user and Order owner should be able to see the Receipt Page.
-        All other users should get the 404 status.
-        """
-        staff_user = self.create_user(is_staff=True)
-        other_user = self.create_user()
-
-        order = self.create_order()
-        self.mock_verification_status_api(
-            self.site,
-            self.user,
-            status=200,
-            is_verified=False
-        )
+        """ Order owner should be able to see the Receipt Page."""
+        order = self._create_order_for_receipt(self.user)
         response = self.client.get('{path}?order_number={order_number}'.format(
             order_number=order.number,
             path=self.path
@@ -253,27 +260,33 @@ class ReceiptResponseViewTests(CourseCatalogMockMixin, LmsApiMockMixin, RefundTe
             'fire_tracking_events': False,
             'display_credit_messaging': False,
         }
+
         self.assertEqual(response.status_code, 200)
         self.assertDictContainsSubset(context_data, response.context_data)
 
-        self.mock_verification_status_api(
-            self.site,
-            staff_user,
-            status=200,
-            is_verified=False
-        )
+    @httpretty.activate
+    def test_get_receipt_for_existing_order_as_staff_user(self):
+        """ Staff users can preview Receipts for all Orders."""
+        staff_user = self.create_user(is_staff=True)
+        order = self._create_order_for_receipt(staff_user)
         response = self._visit_receipt_page_with_another_user(order, staff_user)
+        context_data = {
+            'payment_method': None,
+            'fire_tracking_events': False,
+            'display_credit_messaging': False,
+        }
+
         self.assertEqual(response.status_code, 200)
         self.assertDictContainsSubset(context_data, response.context_data)
 
-        self.mock_verification_status_api(
-            self.site,
-            other_user,
-            status=200,
-            is_verified=False
-        )
+    @httpretty.activate
+    def test_get_receipt_for_existing_order_user_not_owner(self):
+        """ Users that don't own the Order shouldn't be able to see the Receipt. """
+        other_user = self.create_user()
+        order = self._create_order_for_receipt(other_user)
         response = self._visit_receipt_page_with_another_user(order, other_user)
         context_data = {'order_history_url': self.site.siteconfiguration.build_lms_url('account/settings')}
+
         self.assertEqual(response.status_code, 404)
         self.assertDictContainsSubset(context_data, response.context_data)
 
@@ -281,6 +294,12 @@ class ReceiptResponseViewTests(CourseCatalogMockMixin, LmsApiMockMixin, RefundTe
     def test_order_data_for_credit_seat(self):
         """ Ensure that the context is updated with Order data. """
         order = self.create_order(credit=True)
+        self.mock_verification_status_api(
+            self.site,
+            self.user,
+            status=200,
+            is_verified=True
+        )
         seat = order.lines.first().product
         body = {'display_name': 'Hogwarts'}
 
@@ -291,13 +310,6 @@ class ReceiptResponseViewTests(CourseCatalogMockMixin, LmsApiMockMixin, RefundTe
             ),
             body=json.dumps(body),
             content_type="application/json"
-        )
-
-        self.mock_verification_status_api(
-            self.site,
-            self.user,
-            status=200,
-            is_verified=True
         )
 
         response = self.client.get('{path}?order_number={order_number}'.format(

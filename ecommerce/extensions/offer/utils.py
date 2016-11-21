@@ -46,12 +46,13 @@ def get_discount_value(discount_percentage, product_price):
     return discount_percentage * product_price / 100.0
 
 
-def format_benefit_value(benefit):
+def format_benefit_value(benefit, currency):
     """
     Format benefit value for display based on the benefit type
 
     Arguments:
         benefit (Benefit): Benefit to be displayed
+        currency (str): Currency to be displayed
 
     Returns:
         benefit_value (str): String value containing formatted benefit value and type.
@@ -60,6 +61,5 @@ def format_benefit_value(benefit):
     if benefit.type == Benefit.PERCENTAGE:
         benefit_value = _('{benefit_value}%'.format(benefit_value=benefit_value))
     else:
-        # TODO: Fix this; Currency should be a dynamic value;
-        benefit_value = format_price(Decimal(benefit.value), 'USD')
+        benefit_value = format_price(Decimal(benefit.value), currency)
     return benefit_value
