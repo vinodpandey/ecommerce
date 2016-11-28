@@ -224,10 +224,10 @@ class ReceiptResponseViewTests(CourseCatalogMockMixin, LmsApiMockMixin, RefundTe
         payment_method = ReceiptResponseView().get_payment_method(order)
         self.assertEqual(payment_method, None)
 
-    def test_get_payment_method_payment_processor(self):
+    def test_get_payment_method_source_type(self):
         """
-        Payment Processor name should be displayed as the Payment method
-        when a Payment Processor was used to process the Order.
+        Source Type name should be displayed as the Payment method
+        when the credit card wasn't used to purchase a product.
         """
         order = self.create_order()
         source = factories.SourceFactory(order=order)

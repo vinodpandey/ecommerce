@@ -6,8 +6,7 @@ import six
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import ObjectDoesNotExist
 from django.db import transaction
-from django.http import JsonResponse, Http404, HttpResponse, HttpResponseBadRequest
-from django.shortcuts import redirect
+from django.http import JsonResponse, HttpResponse
 from django.utils.decorators import method_decorator
 from django.utils.translation import ugettext as _
 from django.views.decorators.csrf import csrf_exempt

@@ -20,122 +20,129 @@
 
 {% block content %}
   <div class="receipt">
-  <div class="container content-container">
-    <div id="receipt-container"
-         class="pay-and-verify"
-         data-currency="{{ order.currency }}"
-         data-fire-tracking-events="{{ fire_tracking_events|yesno:"true,false" }}"
-         data-order-id="{{ order.number }}"
-         data-total-amount="{{ order.total_excl_tax }}">
-      <div class="wrapper-content-main">
-        <div class="content-main">
-          <h3 class="thank-you">
-            {% trans "Thank you!" %}
-          </h3>
+    <div class="container content-container">
+      <div id="receipt-container"
+           data-currency="{{ order.currency }}"
+           data-fire-tracking-events="{{ fire_tracking_events|yesno:"true,false" }}"
+           data-order-id="{{ order.number }}"
+           data-total-amount="{{ order.total_incl_tax }}">
+        <h3 class="thank-you">{% trans "Thank you!" %}</h3>
 
-          <div class="list-info">
-            <div class="info-item payment-info row">
-              <div class="copy col-md-8">
-                <div class="confirm-message">
-                  {% blocktrans with email=order.user.email %}
-                    Your order was processed successfully. Print this page for your records. It
-                    serves as your receipt. You will also receive a confirmation email with the
-                    same information at {{ email }}.
-                  {% endblocktrans %}
-                </div>
-
-                {% if order.billing_address %}
-                  <address class="billing-address">
-                    {% for field in order.billing_address.active_address_fields %}
-                      {{ field }}<br/>
-                    {% endfor %}
-                  </address>
-                {% endif %}
+        <div class="list-info">
+          <div class="info-item payment-info row">
+            <div class="copy col-md-8">
+              <div class="confirm-message">
+                {% captureas link_start %}
+                  <a href="mailto:{{ order.user.email }}">
+                {% endcaptureas %}
+                {% blocktrans with email=order.user.email link_end="</a>" %}
+                  Your order was processed successfully. Print this page for your records. It
+                  serves as your receipt. You will also receive a confirmation email with the
+                  same information at {{ link_start }}{{ email }}{{ link_end }}.
+                {% endblocktrans %}
               </div>
 
-              <div class="order-headers order-summary col-md-4">
-                <span class="order-number-heading">{% trans "Order Number" %}</span>
-                <div class="order-info">{{ order.number }}</div>
-                {% if payment_method %}
-                  <span class="order-payment-heading">{% trans "Payment Method" %}</span>
-                  <div class="order-info">{{ payment_method }}</div>
-                {% endif %}
-
-                <span class="order-date-heading">{% trans "Order Date" %}</span>
-                <div class="order-info">{{ order.date_placed|date:"DATE_FORMAT" }}</div>
-              </div>
+              {% if order.billing_address %}
+                <address class="billing-address">
+                  {% for field in order.billing_address.active_address_fields %}
+                    {{ field }}<br/>
+                  {% endfor %}
+                </address>
+              {% endif %}
             </div>
 
-            {#            TODO: Make this table responsive.#}
-            <div class="wrapper-report">
-              <div class="order-headers order-details">{% trans "Order Details" %}</div>
-              <div class="table-responsive">
-                <table class="table">
-                  <thead class="order-columns">
+            <div class="order-headers order-summary col-md-4">
+              <div class="description">{% trans "Order Number:" %}</div>
+              <div class="order-info">{{ order.number }}</div>
+              {% if payment_method %}
+                <div class="description">{% trans "Payment Method:" %}</div>
+                <div class="order-info">{{ payment_method }}</div>
+              {% endif %}
+
+              <div class="description">{% trans "Order Date:" %}</div>
+              <div class="order-info">{{ order.date_placed|date:"E d, Y" }}</div>
+            </div>
+          </div>
+
+          <div class="wrapper-report">
+            <div class="order-headers order-details">{% trans "Order Details" %}</div>
+            <div class="table-responsive">
+              <table class="table">
+                <thead class="order-columns">
                   <tr>
                     <th scope="col">{% trans "Quantity" %}</th>
                     <th scope="col">{% trans "Description" %}</th>
                     <th class="order-amount" scope="col">{% trans "Amount" %}</th>
                   </tr>
-                  </thead>
+                </thead>
 
-                  <tbody>
-                    {% for line in order.lines.all %}
-                      <tr class="order-line-data">
-                        <td>{{ line.quantity }}</td>
-                        <td>{{ line.description }}</td>
-                        <td>
-                          <div class="old-price">{{ line.line_price_before_discounts_incl_tax|currency:order.currency }}</div>
-                          <div class="final-price">{{ line.line_price_incl_tax|currency:order.currency }}</div>
-                        </td>
-                      </tr>
-                    {% endfor %}
-
-                    {% if order.total_discount_incl_tax %}
-                      <tr class="vouchers">
-                        <td colspan="3">
-                          {% for voucher in order.basket.vouchers.all %}
-                            <div class="voucher-info">{% trans "Coupon applied" %}:
-                              <span class="voucher-code">{{ voucher.code }}</span>
-                              <span class="discount">-{{ order.total_discount_incl_tax|currency:order.currency }}</span>
-                            </div>
-                          {% endfor %}
-                        </td>
-                      </tr>
-                    {% endif %}
-                  </tbody>
-
-                  <tfoot>
-                    <tr class="order-total">
-                      <td colspan="3">
-                        <div class="total-value">
-                          {% trans "Total:" %}&nbsp;
-                          <span class="value-amount">{{ order.total_incl_tax|currency:order.currency }}</span>
-                        </div>
+                <tbody>
+                  {% for line in order.lines.all %}
+                    <tr class="order-line-data">
+                      <td>
+                        {{ line.quantity }}
+                      </td>
+                      <td>
+                        <div>{{ line.description }}</div>
+                        <p>{{ line.product.course.id|organization }}</p>
+                      </td>
+                      <td class="price">
+                        {{ line.line_price_before_discounts_incl_tax|currency:order.currency }}
                       </td>
                     </tr>
-                  </tfoot>
-                </table>
-              </div>
+                  {% endfor %}
+
+                  {% if order.total_discount_incl_tax %}
+                    <tr class="summary">
+                      {% for voucher in order.basket.vouchers.all %}
+                        <td colspan="2">
+                          <div class="coupons">
+                            <div class="summary-description">{% trans "Coupon applied:" %}</div>
+                            <p>
+                              {% blocktrans with voucher_code=voucher.code voucher_discount_amount=voucher.benefit|benefit_discount %}
+                                {{ voucher_code }} {{ voucher_discount_amount }} off
+                              {% endblocktrans %}
+                            </p>
+                          </div>
+                        </td>
+                        <td class="price">
+                          <div class="discount">
+                            -{{ order.total_discount_incl_tax|currency:order.currency }}
+                          </div>
+                        </td>
+                      {% endfor %}
+                    </tr>
+                  {% endif %}
+                </tbody>
+
+                <tfoot>
+                  <tr class="summary">
+                    <td class="total" colspan="2">
+                      <div class="summary-description">{% trans "Total:" %}</div>
+                    </td>
+                    <td class="price total">{{ order.total_incl_tax|currency:order.currency }}</td>
+                  </tr>
+                </tfoot>
+              </table>
             </div>
-
-            {% if display_credit_messaging %}
-              {% captureas link_start %}
-                <a href="{{ lms_dashboard_url }}">
-              {% endcaptureas %}
-
-              <div class="nav-wizard row">
-                <p class="header">{% trans "Finish your credit application!" %}</p>
-                <p class="message">
-                  {% blocktrans with link_end="</a>" %}
-                    This order includes a credit course. In order to finalize your application for credit, please visit
-                    your {{ link_start }}Student Dashboard{{ link_end }} and follow the instructions for each
-                    credit-eligible course.
-                  {% endblocktrans %}
-                </p>
-              </div>
-            {% endif %}
           </div>
+
+          {% if display_credit_messaging %}
+            {% captureas link_start %}
+              <a href="{{ lms_dashboard_url }}">
+            {% endcaptureas %}
+
+            <div class="nav-wizard row">
+              <p class="header">{% trans "Finish your credit application!" %}</p>
+              <p class="message">
+                {% blocktrans with link_end="</a>" %}
+                  This order includes a credit course. In order to finalize your application for credit, please visit
+                  your {{ link_start }}Student Dashboard{{ link_end }} and follow the instructions for each
+                  credit-eligible course.
+                {% endblocktrans %}
+              </p>
+            </div>
+          {% endif %}
         </div>
 
         {% if verified_course_id and not user_verified %}

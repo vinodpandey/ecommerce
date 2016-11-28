@@ -1,6 +1,9 @@
 from django import template
 from django.conf import settings
 from django.utils.safestring import mark_safe
+from opaque_keys.edx.keys import CourseKey
+
+from ecommerce.extensions.offer.utils import format_benefit_value
 
 register = template.Library()
 
@@ -36,6 +39,34 @@ def do_captureas(parser, token):
     nodelist = parser.parse(('endcaptureas',))
     parser.delete_first_token()
     return CaptureasNode(nodelist, args)
+
+
+@register.filter(name='organization')
+def course_organization(course_key):
+    """
+    Retrieve course organization from course key.
+
+    Arguments:
+        course_key (str): Course key.
+
+    Returns:
+        str: Course organization.
+    """
+    return CourseKey.from_string(course_key).org
+
+
+@register.filter(name='benefit_discount')
+def benefit_discount(benefit):
+    """
+    Format benefit value.
+
+    Arguments:
+        benefit (Benefit): Voucher's Benefit.
+
+    Returns:
+        str: String value containing formatted benefit value and type.
+    """
+    return format_benefit_value(benefit)
 
 
 class CaptureasNode(template.Node):

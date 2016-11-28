@@ -33,11 +33,6 @@
         }
     }
 
-    .discount, .final-price {
-        color: black;
-        font-weight: 700;
-    }
-
     #error-container {
         padding: 15px;
         background: #fbf4f7 none repeat scroll 0 0;
@@ -51,11 +46,6 @@
                 font-weight: 600;
             }
         }
-    }
-
-    .final-price {
-        margin: 1.25em 1em 1.25em 1em;
-        font-size: 1em;
     }
 
     .info-item {
@@ -123,6 +113,22 @@
         }
     }
 
+    .thank-you {
+        margin-bottom: 10px;
+        color: rgb(0, 121, 188);
+        font-size: 38px;
+    }
+
+    .confirm-message {
+        font-size: 18px;
+    }
+
+    .price {
+        font-size: 16px;
+        font-weight: bold;
+        text-align: center;
+    }
+
     #dashboard-link {
         margin: 20px;
         text-align: center;
@@ -137,20 +143,24 @@
         font-size: 13px;
     }
 
-    .old-price {
-        color: #7c7c7c;
-        font-weight: 600;
-        text-decoration: line-through;
-    }
-
-    .order-amount {
-        width: 10%;
-    }
-
     .order-columns {
         background-color: rgb(249, 249, 249);
         color: #000;
         font-size: 1em;
+    }
+
+    .order-summary {
+        .description {
+            margin-bottom: 10px;
+
+            font-weight: 500;
+        }
+
+        .order-info {
+            margin-bottom: 20px;
+            color: rgb(29, 29, 29);
+            font-size: 18px;
+        }
     }
 
     .order-details {
@@ -160,17 +170,9 @@
     .order-headers {
         color: rgb(0, 121, 188);
         font-size: 22px;
-        font-weight: 500;
     }
 
-    .order-info {
-        margin-top: 10px;
-        margin-bottom: 20px;
-        color: rgb(29, 29, 29);
-        font-size: 18px;
-    }
-
-    .order-line-data, .vouchers {
+    .order-line-data {
         color: rgb(29, 29, 29);
         font-size: 20px;
 
@@ -179,14 +181,6 @@
             padding-top: 1.25em;
             line-height: 1.5em !important;
         }
-    }
-
-    .order-total {
-        background-color: rgb(249, 249, 249);
-        border-width: 1px;
-        border-color: rgb(235, 235, 235);
-        color: #000;
-        font-size: 1em;
     }
 
     p, address {
@@ -225,50 +219,113 @@
     }
 
     .summary {
-        margin: 0 0 15px;
-        font-size: 18px;
-        font-weight: 600;
-    }
-
-
-    .table tr {
-        > td, > th {
-            padding-left: 1.25em;
-            border-left: 2px solid rgb(235, 235, 235);
-        }
-
-        td:first-child, th:first-child {
-            border-left: none;
-        }
-
-        .total-value {
-            color: rgb(51, 122, 183);
-            font-size: 22px;
-            font-weight: 700;
-            text-align: right;
+        td:first-child {
+            padding: 8px 0 0 0;
         }
     }
 
-    .thank-you {
-        margin-bottom: 10px;
-        color: rgb(0, 121, 188);
-        font-size: 38px;
+    .summary-description {
+        font-weight: bold;
     }
 
-    .vouchers {
-        text-align: right;
-    }
 
-    .voucher-code {
-        margin-right: 20px;
-        color:  #7c7c7c;
-    }
+    .table {
+        border-bottom: 4px solid;
 
-    .voucher-info {
-         font-size: 16px;
+        tbody tr:first-child {
+            border-bottom: 4px solid rgb(235, 235, 235);
+        }
+
+        tfoot {
+            .summary {
+                .total {
+                    padding-bottom: 10px;
+
+                    .summary-description {
+                        float: right;
+                    }
+                }
+            }
+        }
+
+        tr {
+            > td, > th {
+                padding-left: 1.25em;
+                border-left: 2px solid rgb(235, 235, 235);
+            }
+
+            :first-child {
+                border-left: none;
+            }
+        }
+
+        .order-line-data:last-child {
+            td {
+                border-bottom: 4px solid rgb(235, 235, 235);
+            }
+        }
+
+        .summary {
+            td {
+                border: none;
+            }
+
+            .coupons {
+                float: right;
+
+                p {
+                    margin-bottom: 10px;
+                }
+            }
+
+            .price {
+                padding: 0;
+                vertical-align: bottom;
+
+                .discount {
+                    padding-bottom: 10px;
+                }
+            }
+
+            .coupons, .discount {
+                border-bottom: 2px solid rgb(235, 235, 235);
+            }
+        }
     }
 
     .wrapper-content-main {
         margin-bottom: 20px;
+    }
+}
+
+/* extra Small devices (phones, 768px and lower) */
+@media (max-width: $screen-xs-max) {
+    .receipt {
+        .thank-you {
+            text-align: center;
+        }
+
+        .order-summary {
+            border-top: 2px solid rgb(235, 235, 235);
+            border-bottom: 2px solid rgb(235, 235, 235);
+
+            padding: 10px 0;
+
+            background-color: rgb(249, 249, 249);
+
+            .description {
+                float: left;
+
+                color: black;
+                font-size: 18px;
+                font-weight: bold;
+            }
+
+            .order-info {
+                display: flex;
+
+                padding-left: 10px;
+            }
+        }
     }
 }

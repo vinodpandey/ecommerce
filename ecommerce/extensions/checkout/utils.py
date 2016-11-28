@@ -2,7 +2,7 @@ import logging
 
 from babel.numbers import format_currency
 from django.conf import settings
-from django.utils.translation import get_language, to_locale, ugettext_lazy as _
+from django.utils.translation import get_language, to_locale
 from edx_rest_api_client.client import EdxRestApiClient
 from requests.exceptions import ConnectionError, Timeout
 from slumber.exceptions import SlumberHttpBaseException
@@ -56,22 +56,18 @@ def get_receipt_page_url(site_configuration, order_number=None):
     )
 
 
-def format_price(amount, currency):
+def add_currency(amount):
     """ Adds currency to the price amount.
 
     Args:
         amount (Decimal): Price amount
-        currency (str): Price currency
 
     Returns:
         str: Formatted price with currency.
     """
-    return _('{currency}{price}'.format(
-        currency='$',
-        price=format_currency(
-            amount,
-            currency,
-            format='#,##0.00',
-            locale=to_locale(get_language())
-        )
-    ))
+    return format_currency(
+        amount,
+        settings.OSCAR_DEFAULT_CURRENCY,
+        format=u'#,##0.00',
+        locale=to_locale(get_language())
+    )

@@ -4,7 +4,7 @@ from decimal import Decimal
 from django.utils.translation import ugettext_lazy as _
 from oscar.core.loading import get_model
 
-from ecommerce.extensions.checkout.utils import format_price
+from ecommerce.extensions.checkout.utils import add_currency
 
 Benefit = get_model('offer', 'Benefit')
 
@@ -46,13 +46,12 @@ def get_discount_value(discount_percentage, product_price):
     return discount_percentage * product_price / 100.0
 
 
-def format_benefit_value(benefit, currency):
+def format_benefit_value(benefit):
     """
     Format benefit value for display based on the benefit type
 
     Arguments:
         benefit (Benefit): Benefit to be displayed
-        currency (str): Currency to be displayed
 
     Returns:
         benefit_value (str): String value containing formatted benefit value and type.
@@ -61,5 +60,6 @@ def format_benefit_value(benefit, currency):
     if benefit.type == Benefit.PERCENTAGE:
         benefit_value = _('{benefit_value}%'.format(benefit_value=benefit_value))
     else:
-        benefit_value = format_price(Decimal(benefit.value), currency)
+        converted_benefit = add_currency(Decimal(benefit.value))
+        benefit_value = _('${benefit_value}'.format(benefit_value=converted_benefit))
     return benefit_value
