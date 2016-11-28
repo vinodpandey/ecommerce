@@ -124,9 +124,11 @@
     }
 
     .price {
+        padding-right: 0;
+
         font-size: 16px;
         font-weight: bold;
-        text-align: center;
+        text-align: right;
     }
 
     #dashboard-link {
