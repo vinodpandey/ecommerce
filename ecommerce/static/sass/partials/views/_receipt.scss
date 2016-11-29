@@ -113,14 +113,17 @@
         }
     }
 
-    .thank-you {
-        margin-bottom: 10px;
-        color: rgb(0, 121, 188);
-        font-size: 38px;
-    }
-
     .confirm-message {
         font-size: 18px;
+    }
+
+    h2 {
+        margin-bottom: 10px;
+        color: rgb(0, 121, 188);
+    }
+
+    .thank-you {
+        font-size: 38px;
     }
 
     .price {
@@ -145,28 +148,16 @@
         font-size: 13px;
     }
 
-    .order-columns {
-        background-color: rgb(249, 249, 249);
-        color: #000;
-        font-size: 1em;
-    }
-
     .order-summary {
-        .description {
-            margin-bottom: 10px;
-
+        dt {
             font-weight: 500;
         }
 
-        .order-info {
+        dd {
             margin-bottom: 20px;
             color: rgb(29, 29, 29);
             font-size: 18px;
         }
-    }
-
-    .order-details {
-        margin-bottom: 20px;
     }
 
     .order-headers {
@@ -232,65 +223,106 @@
 
 
     .table {
-        border-bottom: 4px solid;
-
-        tbody tr:first-child {
-            border-bottom: 4px solid rgb(235, 235, 235);
+        dl {
+            margin: 0;
         }
 
-        tfoot {
-            .summary {
-                .total {
-                    padding-bottom: 10px;
+        .header, .order-line-data {
+            dt, dd {
+                padding: 10px;
 
-                    .summary-description {
-                        float: right;
-                    }
+                &:not(:last-child) {
+                    float: left;
+
+                    border-right: 2px solid rgb(235, 235, 235);
+                }
+
+                &:last-child {
+                    display: inline-block;
+
+                    width: 15%;
+                }
+            }
+
+            dt:last-child {
+                text-align: center;
+            }
+
+            dd {
+                height: 100px;
+            }
+        }
+
+        .header dt {
+            border-bottom: 2px solid rgb(235, 235, 235);
+
+            &:first-child {
+                width: 10%;
+            }
+
+            &:nth-child(2) {
+                width: 75%;
+            }
+        }
+
+        .order-line-data {
+            &:not(:last-child) {
+                border-bottom: 2px solid rgb(235, 235, 235);
+            }
+
+            &:last-child {
+                border-bottom: 4px solid;
+            }
+
+            dd {
+                &:nth-child(2) {
+                    width: 10%;
+                }
+
+                &:nth-child(4) {
+                    width: 75%;
                 }
             }
         }
 
-        tr {
-            > td, > th {
-                padding-left: 1.25em;
-                border-left: 2px solid rgb(235, 235, 235);
-            }
-
-            :first-child {
-                border-left: none;
-            }
+        .price {
+            text-align: center;
         }
 
-        .order-line-data:last-child {
-            td {
-                border-bottom: 4px solid rgb(235, 235, 235);
+        .order-total {
+            padding-left: 60%;
+
+            height: 60px;
+
+            .description, .price {
+                padding: 5px 0;
+
+                height: inherit;
             }
-        }
 
-        .summary {
-            td {
-                border: none;
-            }
+            .description {
+                float: left;
 
-            .coupons {
-                float: right;
+                width: 62.5%;
 
-                p {
-                    margin-bottom: 10px;
+                span {
+                    padding-bottom: 10px;
+                    line-height: 20px;
+
+                    font-weight: bold;
                 }
             }
 
             .price {
-                padding: 0;
-                vertical-align: bottom;
+                display: inline-block;
 
-                .discount {
-                    padding-bottom: 10px;
-                }
+                width: 37.5%;
             }
 
-            .coupons, .discount {
-                border-bottom: 2px solid rgb(235, 235, 235);
+            &:not(:last-child) {
+                .description, .price {
+                    border-bottom: 2px solid rgb(235, 235, 235);
+                }
             }
         }
     }
@@ -300,9 +332,16 @@
     }
 }
 
-/* extra Small devices (phones, 768px and lower) */
-@media (max-width: $screen-xs-max) {
+/* Small devices (tablets, 992px and lower) */
+@media (max-width: $screen-sm-max) {
     .receipt {
+        .sr {
+            position: static;
+
+            width: auto;
+            height: auto;
+        }
+
         .thank-you {
             text-align: center;
         }
@@ -315,7 +354,11 @@
 
             background-color: rgb(249, 249, 249);
 
-            .description {
+            dt, dd {
+                padding-left: 10px;
+            }
+
+            dt {
                 float: left;
 
                 color: black;
@@ -323,10 +366,89 @@
                 font-weight: bold;
             }
 
-            .order-info {
+            dd {
                 display: flex;
+            }
+        }
 
-                padding-left: 10px;
+        .table {
+            border-top: 4px solid rgb(235, 235, 235);
+
+            .header {
+                display: none;
+
+                dt {
+                    border-bottom: none;
+                }
+            }
+
+            .order-line-data {
+                padding-top: 10px;
+
+                &:not(:last-child) {
+                    border-bottom: none;
+                }
+
+                &:last-child {
+                    border-bottom: 2px solid;
+                }
+
+                dt, dd {
+                    &:not(:last-child) {
+                        float: none;
+
+                        border-right: none;
+                    }
+                }
+
+                dd {
+                    display: inline-block;
+
+                    height: auto;
+
+                    &:nth-child(2), &:nth-child(4) {
+                        width: auto;
+                    }
+                }
+
+                dt {
+                    display: inline;
+                    float: left;
+
+                    &.line-price {
+                        font-weight: normal;
+                    }
+                }
+
+                .quantity, .line-price {
+                    display: inline;
+                }
+
+                .course-description {
+                    display: block;
+
+                    width: auto;
+                }
+            }
+
+            .order-total {
+                border-bottom: 2px solid rgb(235, 235, 235);
+
+                padding: 10px 0;
+
+                p {
+                    font-size: 15px;
+                }
+
+                .price {
+                    text-align: right;
+                }
+
+                &:not(:last-child) {
+                    .description, .price {
+                        border-bottom: none;
+                    }
+                }
             }
         }
     }

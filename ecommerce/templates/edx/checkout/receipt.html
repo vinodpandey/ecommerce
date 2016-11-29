@@ -26,7 +26,7 @@
            data-fire-tracking-events="{{ fire_tracking_events|yesno:"true,false" }}"
            data-order-id="{{ order.number }}"
            data-total-amount="{{ order.total_incl_tax }}">
-        <h3 class="thank-you">{% trans "Thank you!" %}</h3>
+        <h2 class="thank-you">{% trans "Thank you!" %}</h2>
 
         <div class="list-info">
           <div class="info-item payment-info row">
@@ -52,78 +52,73 @@
             </div>
 
             <div class="order-headers order-summary col-md-4">
-              <div class="description">{% trans "Order Number:" %}</div>
-              <div class="order-info">{{ order.number }}</div>
-              {% if payment_method %}
-                <div class="description">{% trans "Payment Method:" %}</div>
-                <div class="order-info">{{ payment_method }}</div>
-              {% endif %}
-
-              <div class="description">{% trans "Order Date:" %}</div>
-              <div class="order-info">{{ order.date_placed|date:"E d, Y" }}</div>
+              <dl>
+                <dt>{% trans "Order Number:" %}</dt>
+                <dd>{{ order.number }}</dd>
+                {% if payment_method %}
+                  <dt>{% trans "Payment Method:" %}</dt>
+                  <dd>{{ payment_method }}</dd>
+                {% endif %}
+                <dt>{% trans "Order Date:" %}</dt>
+                <dd>{{ order.date_placed|date:"E d, Y" }}</dd>
+              </dl>
             </div>
           </div>
 
-          <div class="wrapper-report">
-            <div class="order-headers order-details">{% trans "Order Details" %}</div>
-            <div class="table-responsive">
-              <table class="table">
-                <thead class="order-columns">
-                  <tr>
-                    <th scope="col">{% trans "Quantity" %}</th>
-                    <th scope="col">{% trans "Description" %}</th>
-                    <th class="order-amount" scope="col">{% trans "Amount" %}</th>
-                  </tr>
-                </thead>
+          <h2>{% trans "Order Details" %}</h2>
+          <div class="table">
+            <dl>
+              <div class="header">
+                <dt aria-hidden="true">{% trans "Qty." %}</dt>
+                <dt aria-hidden="true">{% trans "Description" %}</dt>
+                <dt aria-hidden="true">{% trans "Item Price" %}</dt>
+              </div>
+              {% for line in order.lines.all %}
+                <div class="order-line-data">
+                  <dt class="quantity sr">{% trans "Quantity:" %}</dt>
+                  <dd class="quantity">{{ line.quantity }}</dd>
+                  <dt class="course-description sr">{% trans "Description:" %}</dt>
+                  <dd class="course-description">
+                    <div>
+                      <span>{{ line.description }}</span>
+                    </div>
+                    <p>{{ line.product.course.id|organization }}</p>
+                  </dd>
+                  <dt class="line-price sr">{% trans "Item Price:" %}</dt>
+                  <dd class="line-price price">{{ line.line_price_before_discounts_incl_tax|currency:order.currency }}</dd>
+                </div>
+              {% endfor %}
+            </dl>
+            <div class="order-total">
+              <div class="description">
+                <span>{% trans "Sub-total:" %}</span>
+              </div>
+              <div class="price">{{ order.total_before_discounts_incl_tax|currency:order.currency }}</div>
+            </div>
 
-                <tbody>
-                  {% for line in order.lines.all %}
-                    <tr class="order-line-data">
-                      <td>
-                        {{ line.quantity }}
-                      </td>
-                      <td>
-                        <div>{{ line.description }}</div>
-                        <p>{{ line.product.course.id|organization }}</p>
-                      </td>
-                      <td class="price">
-                        {{ line.line_price_before_discounts_incl_tax|currency:order.currency }}
-                      </td>
-                    </tr>
-                  {% endfor %}
+            {% if order.total_discount_incl_tax %}
+              {% for voucher in order.basket.vouchers.all %}
+                <div class="order-total">
+                  <div class="description">
+                    <span>{% trans "Coupon applied:" %}</span>
+                    <p>
+                      {% blocktrans with voucher_code=voucher.code voucher_discount_amount=voucher.benefit|benefit_discount %}
+                        {{ voucher_code }} {{ voucher_discount_amount }} off
+                      {% endblocktrans %}
+                    </p>
+                  </div>
+                  <div class="price">
+                    -{{ order.total_discount_incl_tax|currency:order.currency }}
+                  </div>
+                </div>
+              {% endfor %}
+            {% endif %}
 
-                  {% if order.total_discount_incl_tax %}
-                    <tr class="summary">
-                      {% for voucher in order.basket.vouchers.all %}
-                        <td colspan="2">
-                          <div class="coupons">
-                            <div class="summary-description">{% trans "Coupon applied:" %}</div>
-                            <p>
-                              {% blocktrans with voucher_code=voucher.code voucher_discount_amount=voucher.benefit|benefit_discount %}
-                                {{ voucher_code }} {{ voucher_discount_amount }} off
-                              {% endblocktrans %}
-                            </p>
-                          </div>
-                        </td>
-                        <td class="price">
-                          <div class="discount">
-                            -{{ order.total_discount_incl_tax|currency:order.currency }}
-                          </div>
-                        </td>
-                      {% endfor %}
-                    </tr>
-                  {% endif %}
-                </tbody>
-
-                <tfoot>
-                  <tr class="summary">
-                    <td class="total" colspan="2">
-                      <div class="summary-description">{% trans "Total:" %}</div>
-                    </td>
-                    <td class="price total">{{ order.total_incl_tax|currency:order.currency }}</td>
-                  </tr>
-                </tfoot>
-              </table>
+            <div class="order-total">
+              <div class="description">
+                <span>{% trans "Total" %}</span>
+              </div>
+              <div class="price">{{ order.total_incl_tax|currency:order.currency }}</div>
             </div>
           </div>
 
