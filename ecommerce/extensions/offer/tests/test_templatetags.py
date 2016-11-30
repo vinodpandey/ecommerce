@@ -11,7 +11,7 @@ class OfferTests(TestCase):
     def test_benefit_discount(self):
         benefit = BenefitFactory(type=Benefit.PERCENTAGE, value=35.00)
         template = Template(
-            "{% load core_extras %}"
+            "{% load offer_tags %}"
             "{{ benefit|benefit_discount }}"
         )
         self.assertEqual(template.render(Context({'benefit': benefit})), '35%')
