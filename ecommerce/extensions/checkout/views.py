@@ -126,10 +126,7 @@ class ReceiptResponseView(ThankYouView):
     @method_decorator(csrf_exempt)
     @method_decorator(login_required)
     def dispatch(self, *args, **kwargs):
-        """
-        Customers should only be able to view their receipts when logged in. To avoid blocking responses
-        from payment processors which POST back to the page, the view must be CSRF-exempt.
-        """
+        """ Customers should only be able to view their receipts when logged in. """
         return super(ReceiptResponseView, self).dispatch(*args, **kwargs)
 
     def get(self, request, *args, **kwargs):
