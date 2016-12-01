@@ -70,7 +70,7 @@
     }
 
     .nav-wizard {
-        padding: 15px 20px 10px;
+        padding: 15px 20px;
         margin: 0;
         overflow: hidden;
         border-top: 4px solid rgb(255, 192, 31);
@@ -120,6 +120,10 @@
     h2 {
         margin-bottom: 10px;
         color: rgb(0, 121, 188);
+    }
+
+    p {
+        margin: 0;
     }
 
     .thank-you {
@@ -229,7 +233,7 @@
 
         .header, .order-line-data {
             dt, dd {
-                padding: 10px;
+                padding: 10px 10px 5px 10px;
 
                 &:not(:last-child) {
                     float: left;
@@ -253,15 +257,21 @@
             }
         }
 
-        .header dt {
-            border-bottom: 2px solid rgb(235, 235, 235);
+        .header {
+            background-color: rgb(249, 249, 249);
 
-            &:first-child {
-                width: 10%;
-            }
+            dt {
+                border-bottom: 2px solid rgb(235, 235, 235);
 
-            &:nth-child(2) {
-                width: 75%;
+                font-size: 16px;
+
+                &:first-child {
+                    width: 10%;
+                }
+
+                &:nth-child(2) {
+                    width: 75%;
+                }
             }
         }
 
@@ -275,6 +285,8 @@
             }
 
             dd {
+                font-size: 16px;
+
                 &:nth-child(2) {
                     width: 10%;
                 }
@@ -282,47 +294,45 @@
                 &:nth-child(4) {
                     width: 75%;
                 }
-            }
-        }
 
-        .price {
-            text-align: center;
+                &.line-price {
+                    padding-right: 5%;
+                }
+            }
         }
 
         .order-total {
-            padding-left: 60%;
+            margin-left: 60%;
 
-            height: 60px;
+            padding: 20px 0;
 
-            .description, .price {
-                padding: 5px 0;
-
-                height: inherit;
+            &:not(:last-child) {
+                border-bottom: 2px solid rgb(235, 235, 235);
             }
 
             .description {
-                float: left;
-
                 width: 62.5%;
 
-                span {
-                    padding-bottom: 10px;
-                    line-height: 20px;
+                font-weight: bold;
 
-                    font-weight: bold;
+                p {
+                    padding-top: 5px;
+
+                    font-size: 15px;
+                    font-weight: normal;
                 }
+            }
+
+            .description, .price {
+                display: inline-block;
             }
 
             .price {
-                display: inline-block;
+                float: right;
 
-                width: 37.5%;
-            }
+                margin-right: 12%;
 
-            &:not(:last-child) {
-                .description, .price {
-                    border-bottom: 2px solid rgb(235, 235, 235);
-                }
+                color: black;
             }
         }
     }
@@ -340,6 +350,8 @@
 
             width: auto;
             height: auto;
+
+            font-size: 16px;
         }
 
         .thank-you {
@@ -356,13 +368,14 @@
 
             dt, dd {
                 padding-left: 10px;
+
+                font-size: 16px;
             }
 
             dt {
                 float: left;
 
                 color: black;
-                font-size: 18px;
                 font-weight: bold;
             }
 
@@ -409,15 +422,19 @@
                     &:nth-child(2), &:nth-child(4) {
                         width: auto;
                     }
+
+                    &.course-description {
+                        padding: 0 10px;
+                    }
+
+                    &.line-price {
+                        font-weight: normal;
+                    }
                 }
 
                 dt {
                     display: inline;
                     float: left;
-
-                    &.line-price {
-                        font-weight: normal;
-                    }
                 }
 
                 .quantity, .line-price {
@@ -432,22 +449,12 @@
             }
 
             .order-total {
-                border-bottom: 2px solid rgb(235, 235, 235);
+                margin-left: 0;
 
-                padding: 10px 0;
-
-                p {
-                    font-size: 15px;
-                }
+                padding: 20px 10px;
 
                 .price {
-                    text-align: right;
-                }
-
-                &:not(:last-child) {
-                    .description, .price {
-                        border-bottom: none;
-                    }
+                    margin-right: 0;
                 }
             }
         }

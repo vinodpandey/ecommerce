@@ -67,7 +67,7 @@
 
         <h2>{% trans "Order Details" %}</h2>
         <div class="table">
-          <dl>
+          <dl class="order-lines">
             <div class="header">
               <dt aria-hidden="true">{% trans "Qty." %}</dt>
               <dt aria-hidden="true">{% trans "Description" %}</dt>
@@ -79,9 +79,7 @@
                 <dd class="quantity">{{ line.quantity }}</dd>
                 <dt class="course-description sr">{% trans "Description:" %}</dt>
                 <dd class="course-description">
-                  <div>
-                    <span>{{ line.description }}</span>
-                  </div>
+                  <span>{{ line.description }}</span>
                   <p>{{ line.product.course.id|course_organization }}</p>
                 </dd>
                 <dt class="line-price sr">{% trans "Item Price:" %}</dt>
@@ -90,9 +88,7 @@
             {% endfor %}
           </dl>
           <div class="order-total">
-            <div class="description">
-              <span>{% trans "Sub-total:" %}</span>
-            </div>
+            <div class="description">{% trans "Sub-total:" %}</div>
             <div class="price">{{ order.total_before_discounts_incl_tax|currency:order.currency }}</div>
           </div>
 
@@ -115,9 +111,7 @@
           {% endif %}
 
           <div class="order-total">
-            <div class="description">
-              <span>{% trans "Total" %}</span>
-            </div>
+            <div class="description">{% trans "Total:" %}</div>
             <div class="price">{{ order.total_incl_tax|currency:order.currency }}</div>
           </div>
         </div>

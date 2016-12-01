@@ -1,4 +1,3 @@
-import json
 import urllib
 from decimal import Decimal
 
