@@ -26,7 +26,7 @@
        data-fire-tracking-events="{{ fire_tracking_events|yesno:"true,false" }}"
        data-order-id="{{ order.number }}"
        data-total-amount="{{ order.total_incl_tax }}">
-      <h2 class="thank-you">{% trans "Thank you!" %}</h2>
+      <h2 class="thank-you">{% trans "Thank you for your order!" %}</h2>
 
       <div class="list-info">
         <div class="info-item payment-info row">
@@ -36,9 +36,9 @@
                 <a href="mailto:{{ order.user.email }}">
               {% endcaptureas %}
               {% blocktrans with email=order.user.email link_end="</a>" %}
-                Your order was processed successfully. Print this page for your records. It
-                serves as your receipt. You will also receive a confirmation email with the
-                same information at {{ link_start }}{{ email }}{{ link_end }}.
+                Your order is complete. If you need a receipt, you can print this page.
+                You will also receive a confirmation message with this information at
+                {{ link_start }}{{ email }}{{ link_end }}.
               {% endblocktrans %}
             </div>
 
@@ -65,11 +65,11 @@
           </div>
         </div>
 
-        <h2>{% trans "Order Details" %}</h2>
+        <h2>{% trans "Order Information" %}</h2>
         <div class="table">
           <dl class="order-lines">
             <div class="header">
-              <dt aria-hidden="true">{% trans "Qty." %}</dt>
+              <dt aria-hidden="true">{% trans "Quantity" %}</dt>
               <dt aria-hidden="true">{% trans "Description" %}</dt>
               <dt aria-hidden="true">{% trans "Item Price" %}</dt>
             </div>
@@ -88,7 +88,7 @@
             {% endfor %}
           </dl>
           <div class="order-total">
-            <div class="description">{% trans "Sub-total:" %}</div>
+            <div class="description">{% trans "Subtotal:" %}</div>
             <div class="price">{{ order.total_before_discounts_incl_tax|currency:order.currency }}</div>
           </div>
 
