@@ -10,7 +10,6 @@ from django.core.urlresolvers import reverse
 from factory.django import mute_signals
 from freezegun import freeze_time
 from oscar.apps.order.exceptions import UnableToPlaceOrder
-from oscar.apps.payment.exceptions import PaymentError, UserCancelled, TransactionDeclined
 from oscar.core.loading import get_class, get_model
 from oscar.test import factories
 from oscar.test.contextmanagers import mock_signal_receiver
