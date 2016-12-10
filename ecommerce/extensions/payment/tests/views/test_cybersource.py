@@ -167,34 +167,6 @@ class CybersourceNotifyViewTests(CybersourceMixin, PaymentEventsMixin, TestCase)
         self.assert_processor_response_recorded(self.processor_name, notification[u'transaction_id'], notification,
                                                 basket=self.basket)
 
-    @ddt.data(
-        (PaymentError, 200, 'ERROR', 'CyberSource payment failed for basket [{basket_id}]. '
-                                     'The payment response was recorded in entry [{response_id}].'),
-        (UserCancelled, 200, 'INFO', 'CyberSource payment did not complete for basket [{basket_id}] because '
-                                     '[UserCancelled]. The payment response was recorded in entry [{response_id}].'),
-        (TransactionDeclined, 200, 'INFO', 'CyberSource payment did not complete for basket [{basket_id}] because '
-                                           '[TransactionDeclined]. The payment response was recorded in entry '
-                                           '[{response_id}].'),
-        (KeyError, 500, 'ERROR', 'Attempts to handle payment for basket [{basket_id}] failed.')
-    )
-    @ddt.unpack
-    def test_payment_handling_error(self, error_class, status_code, log_level, error_message):
-        """
-        Verify that CyberSource's merchant notification is saved to the database despite an error handling payment.
-        """
-        notification = self.generate_notification(
-            self.basket,
-            billing_address=self.billing_address,
-        )
-        with mock.patch.object(CybersourceNotifyView, 'handle_payment', side_effect=error_class) as fake_handle_payment:
-            self._assert_processing_failure(
-                notification,
-                status_code,
-                error_message.format(basket_id=self.basket.id, response_id=1),
-                log_level
-            )
-            self.assertTrue(fake_handle_payment.called)
-
     @ddt.data(UnableToPlaceOrder, KeyError)
     def test_unable_to_place_order(self, exception):
         """ When payment is accepted, but an order cannot be placed, log an error and return HTTP 200. """
@@ -418,15 +390,3 @@ class CybersourceSubmitViewTests(CybersourceMixin, TestCase):
 
         errors = json.loads(response.content)['field_errors']
         self.assertIn(field, errors)
-
-
-@ddt.ddt
-class CybersourceInterstitialViewTests(CybersourceNotifyViewTests, TestCase):
-    """ Test interstitial view for Cybersource Payments. """
-    path = reverse('cybersource_redirect')
-
-    def setUp(self):
-        super(CybersourceInterstitialViewTests, self).setUp()
-
-        self.go_to_receipt_page_status_code = 302
-        self.cybersource_processing_failure_status_code = 502

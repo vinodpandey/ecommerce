@@ -3,6 +3,7 @@ from __future__ import unicode_literals
 import logging
 
 import six
+from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import ObjectDoesNotExist
 from django.db import transaction
@@ -312,15 +313,21 @@ class CybersourceInterstitialView(CybersourceNotificationMixin, View):
             notification = request.POST.dict()
             basket = self.validate_notification(notification)
         except (InvalidBasketError, InvalidSignatureError):
-            # TODO Redirect to a payment error page.
+            redirect(reverse('payment_error'))
         except (UserCancelled, TransactionDeclined, PaymentError):
-            # TODO Thaw the basket.
-            # TODO Redirect back to the basket page, and add a message about cancelled payment.
+            order_number = request.POST.get('req_reference_number')
+            basket_id = OrderNumberGenerator().basket_id(order_number)
+            basket = self._get_basket(basket_id)
+            if basket:
+                basket.thaw()
+
+            messages.error(request, 'Your payment has been cancelled.')
+            redirect(reverse('basket:summary'))
         except:  # pylint: disable=bare-except
-            # TODO Redirect to the payment error page.
+            redirect(reverse('payment_error'))
 
         try:
             self.create_order(request, basket, notification)
             return self.redirect_to_receipt_page(notification)
         except:  # pylint: disable=bare-except
-            # TODO Redirect to error page. This is interesting, because we've already accepted payment.
+            redirect(reverse('payment_error'))
