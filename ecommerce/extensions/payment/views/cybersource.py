@@ -314,7 +314,7 @@ class CybersourceInterstitialView(CybersourceNotificationMixin, View):
             notification = request.POST.dict()
             basket = self.validate_notification(notification)
         except (InvalidBasketError, InvalidSignatureError):
-            redirect(reverse('payment_error'))
+            return redirect(reverse('payment_error'))
         except (UserCancelled, TransactionDeclined, PaymentError):
             order_number = request.POST.get('req_reference_number')
             basket_id = OrderNumberGenerator().basket_id(order_number)
@@ -323,12 +323,12 @@ class CybersourceInterstitialView(CybersourceNotificationMixin, View):
                 basket.thaw()
 
             messages.error(request, 'Your payment has been cancelled.')
-            redirect(reverse('basket:summary'))
+            return redirect(reverse('basket:summary'))
         except:  # pylint: disable=bare-except
-            redirect(reverse('payment_error'))
+            return redirect(reverse('payment_error'))
 
         try:
             self.create_order(request, basket, notification)
             return self.redirect_to_receipt_page(notification)
         except:  # pylint: disable=bare-except
-            redirect(reverse('payment_error'))
+            return redirect(reverse('payment_error'))

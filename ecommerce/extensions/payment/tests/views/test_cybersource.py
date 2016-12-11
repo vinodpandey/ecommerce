@@ -16,9 +16,10 @@ from oscar.test.contextmanagers import mock_signal_receiver
 from testfixtures import LogCapture
 
 from ecommerce.extensions.fulfillment.status import ORDER
+from ecommerce.extensions.payment.exceptions import InvalidSignatureError, InvalidBasketError
 from ecommerce.extensions.payment.processors.cybersource import Cybersource
 from ecommerce.extensions.payment.tests.mixins import PaymentEventsMixin, CybersourceMixin
-from ecommerce.extensions.payment.views.cybersource import CybersourceNotifyView
+from ecommerce.extensions.payment.views.cybersource import CybersourceInterstitialView, CybersourceNotifyView
 from ecommerce.tests.testcases import TestCase
 
 JSON = 'application/json'
@@ -54,9 +55,6 @@ class CybersourceNotifyViewTests(CybersourceMixin, PaymentEventsMixin, TestCase)
 
         self.processor = Cybersource(self.site)
         self.processor_name = self.processor.NAME
-
-        self.go_to_receipt_page_status_code = 200
-        self.cybersource_processing_failure_status_code = 500
 
     def _assert_payment_data_recorded(self, notification):
         """ Ensure PaymentEvent, PaymentProcessorResponse, and Source objects are created for the basket. """
@@ -136,7 +134,7 @@ class CybersourceNotifyViewTests(CybersourceMixin, PaymentEventsMixin, TestCase)
             self.assertEqual(kwargs['order'], order)
 
         # The view should always return 200
-        self.assertEqual(response.status_code, self.go_to_receipt_page_status_code)
+        self.assertEqual(response.status_code, 200)
 
         # Validate the payment data was recorded for auditing
         self._assert_payment_data_recorded(notification)
@@ -166,6 +164,18 @@ class CybersourceNotifyViewTests(CybersourceMixin, PaymentEventsMixin, TestCase)
         self.assert_processor_response_recorded(self.processor_name, notification[u'transaction_id'], notification,
                                                 basket=self.basket)
 
+    def test_payment_handling_error(self):
+        """
+        Verify that CyberSource's merchant notification is saved to the database despite an error handling payment.
+        """
+        notification = self.generate_notification(
+            self.basket,
+            billing_address=self.billing_address,
+        )
+        with mock.patch.object(CybersourceNotifyView, 'handle_payment', side_effect=KeyError):
+            response = self.client.post(self.path, notification)
+            self.assertEqual(response.status_code, 500)
+
     @ddt.data(UnableToPlaceOrder, KeyError)
     def test_unable_to_place_order(self, exception):
         """ When payment is accepted, but an order cannot be placed, log an error and return HTTP 200. """
@@ -184,11 +194,7 @@ class CybersourceNotifyViewTests(CybersourceMixin, PaymentEventsMixin, TestCase)
             error_message = 'Payment was received, but an order for basket [{basket_id}] could not be placed.'.format(
                 basket_id=self.basket.id,
             )
-            self._assert_processing_failure(
-                notification,
-                self.cybersource_processing_failure_status_code,
-                error_message
-            )
+            self._assert_processing_failure(notification, 500, error_message)
             self.assertTrue(fake_handle_order_placement.called)
 
     def test_invalid_basket(self):
@@ -213,7 +219,7 @@ class CybersourceNotifyViewTests(CybersourceMixin, PaymentEventsMixin, TestCase)
 
         def check_notification_address(notification, expected_address):
             response = self.client.post(self.path, notification)
-            self.assertEqual(response.status_code, self.go_to_receipt_page_status_code)
+            self.assertEqual(response.status_code, 200)
             self.assertTrue(mock_placement_handler.called)
             actual_address = mock_placement_handler.call_args[0][6]
             self.assertEqual(actual_address.summary, expected_address.summary)
@@ -389,3 +395,41 @@ class CybersourceSubmitViewTests(CybersourceMixin, TestCase):
 
         errors = json.loads(response.content)['field_errors']
         self.assertIn(field, errors)
+
+
+@ddt.ddt
+class CybersourceInterstitialViewTests(CybersourceMixin, TestCase):
+    """ Test interstitial view for Cybersource Payments. """
+    path = reverse('cybersource_redirect')
+
+    def setUp(self):
+        super(CybersourceInterstitialViewTests, self).setUp()
+
+        self.toggle_ecommerce_receipt_page(True)
+
+        self.user = factories.UserFactory()
+        self.billing_address = self.make_billing_address()
+
+        self.basket = factories.create_basket()
+        self.basket.owner = self.user
+        self.basket.freeze()
+
+        self.processor = Cybersource(self.site)
+        self.processor_name = self.processor.NAME
+
+    @ddt.data(InvalidSignatureError, InvalidBasketError)
+    def test_payment_handling_error(self, error_class):
+        """
+        Verify that CyberSource's merchant notification is saved to the database despite an error handling payment.
+        """
+        notification = self.generate_notification(
+            self.basket,
+            billing_address=self.billing_address,
+        )
+        with mock.patch.object(CybersourceInterstitialView, 'validate_notification', side_effect=error_class):
+            response = self.client.post(self.path, notification, follow=True)
+            self.assertEqual(response.status_code, 200)
+            self.assertEqual(
+                response.context['payment_support_email'],
+                self.request.site.siteconfiguration.payment_support_email
+            )
