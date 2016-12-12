@@ -6,15 +6,18 @@ import json
 import ddt
 import mock
 from django.conf import settings
+from django.contrib import messages
 from django.core.urlresolvers import reverse
 from factory.django import mute_signals
 from freezegun import freeze_time
 from oscar.apps.order.exceptions import UnableToPlaceOrder
+from oscar.apps.payment.exceptions import PaymentError, UserCancelled, TransactionDeclined
 from oscar.core.loading import get_class, get_model
 from oscar.test import factories
 from oscar.test.contextmanagers import mock_signal_receiver
 from testfixtures import LogCapture
 
+from ecommerce.extensions.checkout.utils import get_receipt_page_url
 from ecommerce.extensions.fulfillment.status import ORDER
 from ecommerce.extensions.payment.exceptions import InvalidSignatureError, InvalidBasketError
 from ecommerce.extensions.payment.processors.cybersource import Cybersource
@@ -412,16 +415,15 @@ class CybersourceInterstitialViewTests(CybersourceMixin, TestCase):
 
         self.basket = factories.create_basket()
         self.basket.owner = self.user
+        self.basket.site = self.site
         self.basket.freeze()
 
         self.processor = Cybersource(self.site)
         self.processor_name = self.processor.NAME
 
-    @ddt.data(InvalidSignatureError, InvalidBasketError)
-    def test_payment_handling_error(self, error_class):
-        """
-        Verify that CyberSource's merchant notification is saved to the database despite an error handling payment.
-        """
+    @ddt.data(InvalidSignatureError, InvalidBasketError, KeyError)
+    def test_invalid_payment_error(self, error_class):
+        """ Verify the view redirects to Payment error page when a Payment error occurred. """
         notification = self.generate_notification(
             self.basket,
             billing_address=self.billing_address,
@@ -433,3 +435,14 @@ class CybersourceInterstitialViewTests(CybersourceMixin, TestCase):
                 response.context['payment_support_email'],
                 self.request.site.siteconfiguration.payment_support_email
             )
+
+    @ddt.data(UserCancelled, TransactionDeclined, PaymentError)
+    def test_payment_cancelled_error(self, error_class):
+        """ Verify the view redirects to the Basket page when the Payment has been canceled. """
+        notification = self.generate_notification(
+            self.basket,
+            billing_address=self.billing_address,
+        )
+        with mock.patch.object(CybersourceInterstitialView, 'validate_notification', side_effect=error_class):
+            response = self.client.post(self.path, notification)
+            self.assertRedirects(response, self.get_full_url(path=reverse('basket:summary')), status_code=302)

@@ -290,24 +290,6 @@ class CybersourceNotifyView(CybersourceNotificationMixin, View):
 class CybersourceInterstitialView(CybersourceNotificationMixin, View):
     """ Interstitial view for Cybersource Payments. """
 
-    def redirect_to_receipt_page(self, notification):
-        """ Redirects to the receipt page.
-
-        A session variable is also added to fire tracking events on the receipt page.
-
-        Arguments:
-            notification(dict): CyberSource response notification.
-
-        Returns:
-            response(HttpRedirectResponse): Redirect to the receipt page.
-        """
-        receipt_page_url = get_receipt_page_url(
-            order_number=notification.get('req_reference_number'),
-            site_configuration=self.request.site.siteconfiguration
-        )
-        self.request.session['fire_tracking_events'] = True
-        return redirect(receipt_page_url)
-
     def post(self, request, *args, **kwargs):  # pylint: disable=unused-argument
         """Process a CyberSource merchant notification and place an order for paid products as appropriate."""
         try:
@@ -322,13 +304,18 @@ class CybersourceInterstitialView(CybersourceNotificationMixin, View):
             if basket:
                 basket.thaw()
 
-            messages.error(request, 'Your payment has been cancelled.')
+            messages.error(request, _('Your payment has been canceled.'))
             return redirect(reverse('basket:summary'))
         except:  # pylint: disable=bare-except
             return redirect(reverse('payment_error'))
 
         try:
             self.create_order(request, basket, notification)
-            return self.redirect_to_receipt_page(notification)
+            receipt_page_url = get_receipt_page_url(
+                order_number=notification.get('req_reference_number'),
+                site_configuration=self.request.site.siteconfiguration
+            )
+            self.request.session['fire_tracking_events'] = True
+            return redirect(receipt_page_url)
         except:  # pylint: disable=bare-except
             return redirect(reverse('payment_error'))
