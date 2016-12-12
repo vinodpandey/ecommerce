@@ -6,7 +6,6 @@ import json
 import ddt
 import mock
 from django.conf import settings
-from django.contrib import messages
 from django.core.urlresolvers import reverse
 from factory.django import mute_signals
 from freezegun import freeze_time
@@ -17,7 +16,6 @@ from oscar.test import factories
 from oscar.test.contextmanagers import mock_signal_receiver
 from testfixtures import LogCapture
 
-from ecommerce.extensions.checkout.utils import get_receipt_page_url
 from ecommerce.extensions.fulfillment.status import ORDER
 from ecommerce.extensions.payment.exceptions import InvalidSignatureError, InvalidBasketError
 from ecommerce.extensions.payment.processors.cybersource import Cybersource
