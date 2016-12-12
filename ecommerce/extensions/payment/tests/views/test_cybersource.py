@@ -444,3 +444,26 @@ class CybersourceInterstitialViewTests(CybersourceMixin, TestCase):
         with mock.patch.object(CybersourceInterstitialView, 'validate_notification', side_effect=error_class):
             response = self.client.post(self.path, notification)
             self.assertRedirects(response, self.get_full_url(path=reverse('basket:summary')), status_code=302)
+
+    def test_successful_order(self):
+        """ Verify the view redirects to the Receipt page when the Order has been successfully placed. """
+        # The basket should not have an associated order if no payment was made.
+        self.assertFalse(Order.objects.filter(basket=self.basket).exists())
+
+        notification = self.generate_notification(
+            self.basket,
+            billing_address=self.billing_address,
+        )
+        response = self.client.post(self.path, notification)
+        self.assertTrue(Order.objects.filter(basket=self.basket).exists())
+        self.assertEqual(response.status_code, 302)
+
+    def test_order_creation_error(self):
+        """ Verify the view redirects to the Payment error page when an error occurred during Order creation. """
+        notification = self.generate_notification(
+            self.basket,
+            billing_address=self.billing_address,
+        )
+        with mock.patch.object(CybersourceInterstitialView, 'create_order', side_effect=Exception):
+            response = self.client.post(self.path, notification)
+            self.assertRedirects(response, self.get_full_url(path=reverse('payment_error')), status_code=302)

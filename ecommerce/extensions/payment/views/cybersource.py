@@ -128,6 +128,10 @@ class CybersourceSubmitView(FormView):
 
 
 class CybersourceNotificationMixin(EdxOrderPlacementMixin):
+    @property
+    def payment_processor(self):
+        return Cybersource(self.request.site)
+
     def _get_billing_address(self, cybersource_response):
         return BillingAddress(
             first_name=cybersource_response['req_bill_to_forename'],
@@ -253,10 +257,6 @@ class CybersourceNotificationMixin(EdxOrderPlacementMixin):
 
 class CybersourceNotifyView(CybersourceNotificationMixin, View):
     """ Validates a response from CyberSource and processes the associated basket/order appropriately. """
-
-    @property
-    def payment_processor(self):
-        return Cybersource(self.request.site)
 
     # Disable atomicity for the view. Otherwise, we'd be unable to commit to the database
     # until the request had concluded; Django will refuse to commit when an atomic() block
