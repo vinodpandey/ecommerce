@@ -3,6 +3,7 @@ import urllib
 
 from babel.numbers import format_currency
 from django.conf import settings
+from django.core.urlresolvers import reverse
 from django.utils.translation import get_language, to_locale
 from edx_rest_api_client.client import EdxRestApiClient
 from requests.exceptions import ConnectionError, Timeout
@@ -43,7 +44,7 @@ def get_receipt_page_url(site_configuration, order_number=None):
         str: Receipt page URL.
     """
     if site_configuration.enable_otto_receipt_page:
-        base_url = site_configuration.build_ecommerce_url(settings.RECEIPT_PAGE_PATH)
+        base_url = site_configuration.build_ecommerce_url(reverse('checkout:receipt'))
         params = urllib.urlencode({'order_number': order_number}) if order_number else ''
     else:
         base_url = site_configuration.build_lms_url('/commerce/checkout/receipt')
