@@ -128,6 +128,15 @@ class CybersourceSubmitView(FormView):
 
 
 class CybersourceNotificationMixin(EdxOrderPlacementMixin):
+    # Disable atomicity for the view. Otherwise, we'd be unable to commit to the database
+    # until the request had concluded; Django will refuse to commit when an atomic() block
+    # is active, since that would break atomicity. Without an order present in the database
+    # at the time fulfillment is attempted, asynchronous order fulfillment tasks will fail.
+    @method_decorator(transaction.non_atomic_requests)
+    @method_decorator(csrf_exempt)
+    def dispatch(self, request, *args, **kwargs):
+        return super(CybersourceNotificationMixin, self).dispatch(request, *args, **kwargs)
+
     @property
     def payment_processor(self):
         return Cybersource(self.request.site)
@@ -191,36 +200,35 @@ class CybersourceNotificationMixin(EdxOrderPlacementMixin):
                 notification, transaction_id=transaction_id, basket=basket
             )
 
-        try:
-            # Explicitly delimit operations which will be rolled back if an exception occurs.
-            with transaction.atomic():
-                try:
-                    self.handle_payment(notification, basket)
-                except InvalidSignatureError:
-                    logger.exception(
-                        'Received an invalid CyberSource response. The payment response was recorded in entry [%d].',
-                        ppr.id
-                    )
-                    raise
-                except (UserCancelled, TransactionDeclined) as exception:
-                    logger.info(
-                        'CyberSource payment did not complete for basket [%d] because [%s]. '
-                        'The payment response was recorded in entry [%d].',
-                        basket.id,
-                        exception.__class__.__name__,
-                        ppr.id
-                    )
-                    raise
-                except PaymentError:
-                    logger.exception(
-                        'CyberSource payment failed for basket [%d]. The payment response was recorded in entry [%d].',
-                        basket.id,
-                        ppr.id
-                    )
-                    raise
-        except:  # pylint: disable=bare-except
-            logger.exception('Attempts to handle payment for basket [%d] failed.', basket.id)
-            raise
+        # Explicitly delimit operations which will be rolled back if an exception occurs.
+        with transaction.atomic():
+            try:
+                self.handle_payment(notification, basket)
+            except InvalidSignatureError:
+                logger.exception(
+                    'Received an invalid CyberSource response. The payment response was recorded in entry [%d].',
+                    ppr.id
+                )
+                raise
+            except (UserCancelled, TransactionDeclined) as exception:
+                logger.info(
+                    'CyberSource payment did not complete for basket [%d] because [%s]. '
+                    'The payment response was recorded in entry [%d].',
+                    basket.id,
+                    exception.__class__.__name__,
+                    ppr.id
+                )
+                raise
+            except PaymentError:
+                logger.exception(
+                    'CyberSource payment failed for basket [%d]. The payment response was recorded in entry [%d].',
+                    basket.id,
+                    ppr.id
+                )
+                raise
+            except:  # pylint: disable=bare-except
+                logger.exception('Attempts to handle payment for basket [%d] failed.', basket.id)
+                raise
 
         return basket
 
@@ -257,15 +265,6 @@ class CybersourceNotificationMixin(EdxOrderPlacementMixin):
 
 class CybersourceNotifyView(CybersourceNotificationMixin, View):
     """ Validates a response from CyberSource and processes the associated basket/order appropriately. """
-
-    # Disable atomicity for the view. Otherwise, we'd be unable to commit to the database
-    # until the request had concluded; Django will refuse to commit when an atomic() block
-    # is active, since that would break atomicity. Without an order present in the database
-    # at the time fulfillment is attempted, asynchronous order fulfillment tasks will fail.
-    @method_decorator(transaction.non_atomic_requests)
-    @method_decorator(csrf_exempt)
-    def dispatch(self, request, *args, **kwargs):
-        return super(CybersourceNotifyView, self).dispatch(request, *args, **kwargs)
 
     def post(self, request):
         """Process a CyberSource merchant notification and place an order for paid products as appropriate."""
