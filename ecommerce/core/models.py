@@ -79,6 +79,21 @@ class SiteConfiguration(models.Model):
         null=True,
         blank=True
     )
+    analytics_configuration = JSONField(
+        verbose_name=_('Analytics tracking configuration'),
+        help_text=_('JSON string containing settings related to analytics event tracking.'),
+        null=False,
+        blank=False,
+        default={
+            'SEGMENT': {
+                'DEFAULT_WRITE_KEY': None,
+                'ADDITIONAL_WRITE_KEYS': [],
+            },
+            'GOOGLE_ANALYTICS': {
+                'TRACKING_IDS': [],
+            },
+        }
+    )
     from_email = models.CharField(
         verbose_name=_('From email'),
         help_text=_('Address from which emails are sent.'),
@@ -236,8 +251,35 @@ class SiteConfiguration(models.Model):
             self._clean_client_side_payment_processor()
 
     @cached_property
-    def segment_client(self):
-        return SegmentClient(self.segment_key, debug=settings.DEBUG)
+    def segment_clients(self):
+        """
+        Returns a list of SegmentClient objects for each of the Segment keys configured for this site.
+
+        Returns:
+            list: List of SegmentClient objects
+        """
+        segment_clients = []
+
+        # Segment allows for only a single key to be used client-side, however multiple keys can be
+        # used for server-side tracking. The default Segment key will be used for both client-side
+        # and server-side tracking. Additional Google Analytics trackers can be configured to overcome
+        # the client-side limitation.
+        segment_config = self.analytics_configuration.get('SEGMENT', {})
+        default_key = segment_config.get('DEFAULT_WRITE_KEY')
+        additional_keys = segment_config.get('ADDITIONAL_WRITE_KEYS', [])
+        if default_key:
+            segment_clients.append(SegmentClient(default_key, debug=settings.DEBUG))
+        for key in additional_keys:
+            segment_clients.append(SegmentClient(key, debug=settings.DEBUG))
+
+        return segment_clients
+
+    def track_analytics_event(self, *args, **kwargs):
+        """
+        Sends server-side events to Segment sources.
+        """
+        for client in self.segment_clients:
+            client.track(*args, **kwargs)
 
     def save(self, *args, **kwargs):
         # Clear Site cache upon SiteConfiguration changed

@@ -10,7 +10,9 @@ logger = logging.getLogger(__name__)
 
 def is_segment_configured():
     """Returns a Boolean indicating if Segment has been configured for use."""
-    return bool(get_current_request().site.siteconfiguration.segment_key)
+    return bool(
+        get_current_request().site.siteconfiguration.analytics_configuration.get('SEGMENT', {}).get('DEFAULT_WRITE_KEY')
+    )
 
 
 def parse_tracking_context(user):
@@ -88,12 +90,12 @@ def audit_log(name, **kwargs):
     logger.info(message)
 
 
-def prepare_analytics_data(user, segment_key, course_id=None):
+def prepare_analytics_data(user, analytics_config, course_id=None):
     """ Helper function for preparing necessary data for analytics.
 
     Arguments:
         user (User): The user making the request.
-        segment_key (str): Segment write/API key.
+        analytics_config (dict): Analytics configuration dict containing default Segment write/API key.
         course_id (str): The course ID.
 
     Returns:
@@ -104,7 +106,7 @@ def prepare_analytics_data(user, segment_key, course_id=None):
             'courseId': course_id
         },
         'tracking': {
-            'segmentApplicationId': segment_key
+            'segmentApplicationId': analytics_config.get('SEGMENT', {}).get('DEFAULT_WRITE_KEY')
         }
     }
 
