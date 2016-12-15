@@ -47,10 +47,28 @@ define([
             },
 
             /**
+             * Create a Google Analytics tracker for each tracking ID and sends
+             * a page view event using that tracker.
+             */
+            initGoogleAnalyticsTrackers: function(trackingIds) {
+                for (var t = 0; t < trackingIds.length; t++) {
+                    var trackingId = trackingIds[t],
+                        trackerName = 'tracker-' + t;
+                    this.googleAnalyticsTrackers.push(trackerName);
+                    ga('create', trackingId, 'auto', {'name': trackerName});
+                    ga(trackerName + '.send', 'pageview');
+                }
+            },
+
+            /**
              * This sets up Google Analytics tracking for the application.
              */
             initGoogleAnalytics: function (trackingIds) {
-                if (typeof ga === 'undefined') {
+                if (this.model.isSegmentTrackingEnabled()) {
+                    analytics.ready(function(){
+                        this.initGoogleAnalyticsTrackers(trackingIds);
+                    });
+                } else {
                     // Initialize Google Analytics
                     (function(i, s, o, g, r, a, m) {
                         i['GoogleAnalyticsObject'] = r;
@@ -63,15 +81,8 @@ define([
                         a.src = g;
                         m.parentNode.insertBefore(a, m)
                     })(window, document, 'script', 'https://www.google-analytics.com/analytics.js', 'ga');
-                }
 
-
-                for (var t = 0; t < trackingIds.length; t++) {
-                    var trackingId = trackingIds[t],
-                        trackerName = 'tracker-' + t;
-                    this.googleAnalyticsTrackers.push(trackerName);
-                    ga('create', trackingId, 'auto', {'name': trackerName});
-                    ga(trackerName + '.send', 'pageview');
+                    this.initGoogleAnalyticsTrackers(trackingIds);
                 }
             },
 
