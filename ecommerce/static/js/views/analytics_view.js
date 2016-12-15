@@ -65,8 +65,9 @@ define([
              */
             initGoogleAnalytics: function (trackingIds) {
                 if (this.model.isSegmentTrackingEnabled()) {
+                    var self = this;
                     analytics.ready(function(){
-                        this.initGoogleAnalyticsTrackers(trackingIds);
+                        self.initGoogleAnalyticsTrackers(trackingIds);
                     });
                 } else {
                     // Initialize Google Analytics
