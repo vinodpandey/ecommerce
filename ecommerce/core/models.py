@@ -72,6 +72,7 @@ class SiteConfiguration(models.Model):
         blank=False,
         default={}
     )
+    # TODO: Remove the segment_key field after the analytics_configuration field has been deployed and configured
     segment_key = models.CharField(
         verbose_name=_('Segment key'),
         help_text=_('Segment write/API key.'),
@@ -249,6 +250,15 @@ class SiteConfiguration(models.Model):
 
         if not exclude or 'client_side_payment_processor' not in exclude:
             self._clean_client_side_payment_processor()
+
+    @cached_property
+    def google_analytics_tracking_ids(self):
+        return self.analytics_configuration.get('GOOGLE_ANALYTICS', {}).get('TRACKING_IDS')
+
+    @cached_property
+    def default_segment_key(self):
+        # TODO: Remove self.segment_key from this statement once the segment_key field is removed from this model
+        return self.segment_key or self.analytics_configuration.get('SEGMENT', {}).get('DEFAULT_WRITE_KEY')
 
     @cached_property
     def segment_clients(self):

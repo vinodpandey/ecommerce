@@ -8,43 +8,70 @@ define([
 
         /**
          * This 'view' doesn't display anything, but rather sends tracking
-         * information in response to 'segment:track' events triggered by the
+         * information in response to 'analytics:track' events triggered by the
          * model.
          *
-         * Actions will only be tracked if segmentApplicationId is set in the
-         * model.
+         * Actions will only be tracked if analytics providers have been configured.
          */
         return Backbone.View.extend({
 
-            /**
-             * Reference to Segment analytics library.  This is set after
-             * loading.
-             */
-
             initialize: function (options) {
                 this.options = options || {};
+                this.googleAnalyticsTrackers = [];
 
                 // wait until you have a segment application ID before kicking
                 // up the script
-                if (this.model.isTracking()) {
-                    this.applicationIdSet();
+                if (this.model.isTrackingEnabled()) {
+                    this.initTracking();
                 } else {
-                    this.listenToOnce(this.model, 'change:segmentApplicationId',
-                        this.applicationIdSet);
+                    this.listenToOnce(this.model, 'change:segmentApplicationId', this.initTracking);
                 }
             },
 
-            applicationIdSet: function () {
-                var trackId = this.model.get('segmentApplicationId');
+            initTracking: function () {
+                var segmentKey = this.model.get('segmentApplicationId');
+                var googleAnalyticsTrackingIds = this.model.get('googleAnalyticsTrackingIds');
 
-                // if no ID is supplied, then don't track
-                if (this.model.isTracking()) {
-                    // kick off segment
-                    this.initSegment(trackId);
+                if (this.model.isSegmentTrackingEnabled()) {
+                    this.initSegment(segmentKey);
                     this.logUser();
+                }
+                
+                if (this.model.isGoogleAnalyticsTrackingEnabled()) {
+                    this.initGoogleAnalytics(googleAnalyticsTrackingIds);
+                }
+                
+                if (this.model.isTrackingEnabled()) {
+                    this.listenTo(this.model, 'analytics:track', this.track);
+                }
+            },
 
-                    // now segment has been loaded, we can track events
-                    this.listenTo(this.model, 'segment:track', this.track);
+            /**
+             * This sets up Google Analytics tracking for the application.
+             */
+            initGoogleAnalytics: function (trackingIds) {
+                if (typeof ga === 'undefined') {
+                    // Initialize Google Analytics
+                    (function(i, s, o, g, r, a, m) {
+                        i['GoogleAnalyticsObject'] = r;
+                        i[r] = i[r] || function() {
+                            (i[r].q = i[r].q || []).push(arguments)
+                        }, i[r].l = 1 * new Date();
+                        a = s.createElement(o),
+                            m = s.getElementsByTagName(o)[0];
+                        a.async = 1;
+                        a.src = g;
+                        m.parentNode.insertBefore(a, m)
+                    })(window, document, 'script', 'https://www.google-analytics.com/analytics.js', 'ga');
+                }
+
+
+                for (var t = 0; t < trackingIds.length; t++) {
+                    var trackingId = trackingIds[t],
+                        trackerName = 'tracker-' + t;
+                    this.googleAnalyticsTrackers.push(trackerName);
+                    ga('create', trackingId, 'auto', {'name': trackerName});
+                    ga(trackerName + '.send', 'pageview');
                 }
             },
 
@@ -117,17 +144,29 @@ define([
                 return course;
             },
 
+            buildGoogleAnalyticsEventProperties: function(eventAction, properties) {
+                return {
+                    'hitType': 'event',
+                    'eventCategory': properties.category,
+                    'eventAction': eventAction
+                }
+            },
+
             /**
-             * Catch 'segment:track' events and create events and send
-             * to Segment.
+             * Catch 'analytics:track' events and send them to analytics providers.
              *
              * @param eventType String event type.
              */
             track: function (eventType, properties) {
-                var course = this.buildCourseProperties();
+                if (this.model.isSegmentTrackingEnabled()) {
+                    // Send event to segment including the course ID
+                    analytics.track(eventType, _.extend(this.buildCourseProperties(), properties));
+                }
 
-                // send event to segment including the course ID
-                analytics.track(eventType, _.extend(course, properties));
+                if (this.model.isGoogleAnalyticsTrackingEnabled()) {
+                    // Send event to Google Analytics
+                    ga('send', this.buildGoogleAnalyticsEventProperties(eventType, properties));
+                }
             }
         });
     }

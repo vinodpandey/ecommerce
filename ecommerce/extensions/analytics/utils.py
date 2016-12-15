@@ -90,7 +90,7 @@ def audit_log(name, **kwargs):
     logger.info(message)
 
 
-def prepare_analytics_data(user, analytics_config, course_id=None):
+def prepare_analytics_data(user, site_config, course_id=None):
     """ Helper function for preparing necessary data for analytics.
 
     Arguments:
@@ -106,7 +106,8 @@ def prepare_analytics_data(user, analytics_config, course_id=None):
             'courseId': course_id
         },
         'tracking': {
-            'segmentApplicationId': analytics_config.get('SEGMENT', {}).get('DEFAULT_WRITE_KEY')
+            'googleAnalyticsTrackingIds': site_config.google_analytics_tracking_ids,
+            'segmentApplicationId': site_config.default_segment_key
         }
     }
 

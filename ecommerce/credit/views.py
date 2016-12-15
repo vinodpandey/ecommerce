@@ -82,7 +82,7 @@ class Checkout(TemplateView):
         context.update({
             'analytics_data': prepare_analytics_data(
                 self.request.user,
-                self.request.site.siteconfiguration.analytics_configuration,
+                self.request.site.siteconfiguration,
                 course.id
             ),
             'course': course,
