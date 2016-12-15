@@ -53,7 +53,7 @@ define([
             initGoogleAnalyticsTrackers: function(trackingIds) {
                 for (var t = 0; t < trackingIds.length; t++) {
                     var trackingId = trackingIds[t],
-                        trackerName = 'tracker-' + t;
+                        trackerName = 'tracker' + t;
                     this.googleAnalyticsTrackers.push(trackerName);
                     ga('create', trackingId, 'auto', trackerName);
                     ga(trackerName + '.send', 'pageview');
