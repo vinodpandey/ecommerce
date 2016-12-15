@@ -176,8 +176,13 @@ define([
                 }
 
                 if (this.model.isGoogleAnalyticsTrackingEnabled()) {
-                    // Send event to Google Analytics
-                    ga('send', this.buildGoogleAnalyticsEventProperties(eventType, properties));
+                    // Send event to Google Analytics properties
+                    for (var t = 0; t < this.googleAnalyticsTrackers.length; t++) {
+                        ga(
+                            this.googleAnalyticsTrackers[t] + '.send',
+                            this.buildGoogleAnalyticsEventProperties(eventType, properties)
+                        );
+                    }
                 }
             }
         });
