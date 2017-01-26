@@ -50,8 +50,13 @@ DATABASES = {
 ENABLE_AUTO_AUTH = True
 
 JWT_AUTH.update({
-    'JWT_SECRET_KEY': 'insecure-secret-key',
-    'JWT_ISSUERS': ('test-issuer',),
+    'JWT_ISSUERS': [
+        {
+            'AUDIENCE': 'test-issuer',
+            'ISSUER': 'test-issuer',
+            'SECRET_KEY': 'insecure-secret-key',
+        },
+    ],
 })
 
 PASSWORD_HASHERS = (

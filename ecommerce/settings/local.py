@@ -65,12 +65,19 @@ INTERNAL_IPS = ('127.0.0.1',)
 SOCIAL_AUTH_REDIRECT_IS_HTTPS = False
 
 JWT_AUTH.update({
-    'JWT_SECRET_KEY': 'insecure-secret-key',
-    'JWT_ISSUERS': (
-        'http://127.0.0.1:8000/oauth2',
-        # Must match the value of JWT_ISSUER configured for the ecommerce worker.
-        'ecommerce_worker',
-    ),
+    'JWT_ISSUERS': [
+        {
+            'AUDIENCE': 'http://127.0.0.1:8000/oauth2',
+            'ISSUER': 'http://127.0.0.1:8000/oauth2',
+            'SECRET_KEY': 'insecure-secret-key',
+        },
+
+        {
+            'AUDIENCE': 'ecommerce_worker',
+            'ISSUER': 'ecommerce_worker',
+            'SECRET_KEY': 'insecure-secret-key',
+        },
+    ],
 })
 # END AUTHENTICATION
 

@@ -377,16 +377,14 @@ AUTH_USER_MODEL = 'core.User'
 
 # See: http://getblimp.github.io/django-rest-framework-jwt/#additional-settings
 JWT_AUTH = {
-    'JWT_SECRET_KEY': None,
     'JWT_ALGORITHM': 'HS256',
     'JWT_VERIFY_EXPIRATION': True,
     'JWT_LEEWAY': 1,
-    'JWT_DECODE_HANDLER': 'ecommerce.extensions.api.handlers.jwt_decode_handler',
+    'JWT_DECODE_HANDLER': 'edx_rest_framework_extensions.utils.jwt_decode_handler',
     # These settings are NOT part of DRF-JWT's defaults.
-    'JWT_ISSUERS': (),
+    'JWT_ISSUERS': [],
     # NOTE (CCB): This is temporarily set to False until we decide what values are acceptable.
     'JWT_VERIFY_AUDIENCE': False,
-    'JWT_SECRET_KEYS': (),
 }
 
 # Service user for worker processes.
