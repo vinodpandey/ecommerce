@@ -1,7 +1,9 @@
-from io import StringIO
+from __future__ import unicode_literals
+
 import json
 import logging
 import os
+from io import StringIO
 
 from django.conf import settings
 from django.core.cache import cache
@@ -15,7 +17,6 @@ from slumber.exceptions import SlumberBaseException
 from ecommerce.core.url_utils import get_lms_url
 from ecommerce.core.views import StaffOnlyMixin
 from ecommerce.extensions.partner.shortcuts import get_partner_for_site
-
 
 logger = logging.getLogger(__name__)
 
@@ -69,7 +70,7 @@ class CourseMigrationView(View):
 
         return super(CourseMigrationView, self).dispatch(request, *args, **kwargs)
 
-    def get(self, request, *_args, **_kwargs):
+    def get(self, request):
         course_ids = request.GET.get('course_ids')
         commit = request.GET.get('commit', False)
         commit = commit in ('1', 'true')
@@ -82,20 +83,20 @@ class CourseMigrationView(View):
 
         root_logger = logging.getLogger()
         log_handler = logging.StreamHandler(log)
-        formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+        formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
         log_handler.setFormatter(formatter)
         root_logger.addHandler(log_handler)
 
         try:
             # Log who ran this request
-            msg = u'User [%s] requested course migration for [%s]. '
+            msg = 'User [%s] requested course migration for [%s] with data from [%s]. '
             if commit:
-                msg += u'The changes will be committed to the database.'
+                msg += 'The changes will be committed to the database.'
             else:
-                msg += u'The changes will NOT be committed to the database.'
+                msg += 'The changes will NOT be committed to the database.'
 
             user = request.user
-            logger.info(msg, user.username, course_ids)
+            logger.info(msg, user.username, course_ids, partner.short_code)
 
             if not course_ids:
                 return HttpResponse('No course_ids specified.', status=400)
@@ -103,12 +104,12 @@ class CourseMigrationView(View):
             course_ids = course_ids.split(',')
 
             call_command('migrate_course', *course_ids, access_token=user.access_token, commit=commit,
-                         partner_short_code=partner.short_code, settings=os.environ['DJANGO_SETTINGS_MODULE'],
+                         partner_code=partner.short_code, settings=os.environ['DJANGO_SETTINGS_MODULE'],
                          stdout=out, stderr=err)
 
             # Format the output for display
-            output = u'STDOUT\n{out}\n\nSTDERR\n{err}\n\nLOG\n{log}'.format(out=out.getvalue(), err=err.getvalue(),
-                                                                            log=log.getvalue())
+            output = 'STDOUT\n{out}\n\nSTDERR\n{err}\n\nLOG\n{log}'.format(out=out.getvalue(), err=err.getvalue(),
+                                                                           log=log.getvalue())
 
             return HttpResponse(output, content_type='text/plain')
         finally:
@@ -126,7 +127,7 @@ class ConvertCourseView(View):
 
         return super(ConvertCourseView, self).dispatch(request, *args, **kwargs)
 
-    def get(self, request, *_args, **_kwargs):
+    def get(self, request):
         # TODO If this is not immediately deleted after we convert courses, make sure this is updated to support
         # multi-tenancy.
         course_ids = request.GET.get('course_ids')
@@ -142,17 +143,17 @@ class ConvertCourseView(View):
 
         root_logger = logging.getLogger()
         log_handler = logging.StreamHandler(log)
-        formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+        formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
         log_handler.setFormatter(formatter)
         root_logger.addHandler(log_handler)
 
         try:
             # Log who ran this request
-            msg = u'User [%s] requested conversion of honor seats to audit seats for [%s]. '
+            msg = 'User [%s] requested conversion of honor seats to audit seats for [%s]. '
             if commit:  # pragma: no cover
-                msg += u'The changes will be committed to the database.'
+                msg += 'The changes will be committed to the database.'
             else:
-                msg += u'The changes will NOT be committed to the database.'
+                msg += 'The changes will NOT be committed to the database.'
 
             user = request.user
             logger.info(msg, user.username, course_ids)
@@ -168,8 +169,8 @@ class ConvertCourseView(View):
             )
 
             # Format the output for display
-            output = u'STDOUT\n{out}\n\nSTDERR\n{err}\n\nLOG\n{log}'.format(out=out.getvalue(), err=err.getvalue(),
-                                                                            log=log.getvalue())
+            output = 'STDOUT\n{out}\n\nSTDERR\n{err}\n\nLOG\n{log}'.format(out=out.getvalue(), err=err.getvalue(),
+                                                                           log=log.getvalue())
 
             return HttpResponse(output, content_type='text/plain')
         finally:
