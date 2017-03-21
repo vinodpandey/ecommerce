@@ -29,10 +29,32 @@ from ecommerce.extensions.partner.shortcuts import get_partner_for_site
 from ecommerce.extensions.payment.constants import CLIENT_SIDE_CHECKOUT_FLAG_NAME
 from ecommerce.extensions.payment.forms import PaymentForm
 
+Basket = get_model('basket', 'Basket')
 Benefit = get_model('offer', 'Benefit')
 logger = logging.getLogger(__name__)
+Product = get_model('catalogue', 'Product')
 StockRecord = get_model('partner', 'StockRecord')
 Voucher = get_model('voucher', 'Voucher')
+
+
+class BasketMultiItemView(View):
+    def get(self, request):
+        partner = get_partner_for_site(request)
+
+        skus = request.GET.getlist('sku')
+
+        if not skus:
+            return HttpResponseBadRequest(_('No SKUs provided.'))
+
+        products = Product.objects.filter(stockrecords__partner=partner, stockrecords__partner_sku__in=skus)
+
+        basket = Basket.get_basket(request.user, request.site)
+        basket.flush()
+
+        for product in products:
+            basket.add_product(product, 1)
+
+        return HttpResponseRedirect(reverse('basket:summary'), status=303)
 
 
 class BasketSingleItemView(View):

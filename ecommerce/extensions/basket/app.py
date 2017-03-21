@@ -5,12 +5,14 @@ from oscar.core.loading import get_class
 
 
 class BasketApplication(app.BasketApplication):
+    multi_item_view = get_class('basket.views', 'BasketMultiItemView')
     single_item_view = get_class('basket.views', 'BasketSingleItemView')
     summary_view = get_class('basket.views', 'BasketSummaryView')
 
     def get_urls(self):
         urls = [
             url(r'^$', login_required(self.summary_view.as_view()), name='summary'),
+            url(r'^add/$', login_required(self.multi_item_view.as_view()), name='add-multi'),
             url(r'^add/(?P<pk>\d+)/$', self.add_view.as_view(), name='add'),
             url(r'^vouchers/add/$', self.add_voucher_view.as_view(), name='vouchers-add'),
             url(r'^vouchers/(?P<pk>\d+)/remove/$', self.remove_voucher_view.as_view(), name='vouchers-remove'),
