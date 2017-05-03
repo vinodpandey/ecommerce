@@ -118,6 +118,9 @@ class OrderCreator(OscarOrderCreator):
 
 
 class UserAlreadyPlacedOrder(object):
+    """
+    Provides utils methods to check if user has already placed an order
+    """
     @staticmethod
     def user_already_placed_order(user, product):
         """
@@ -132,6 +135,15 @@ class UserAlreadyPlacedOrder(object):
         orders_lines = OrderLine.objects.filter(product=product, order__user=user)
         if orders_lines:
             for order_line in orders_lines:
-                if not RefundLine.objects.filter(order_line=order_line).exists():
+                if not UserAlreadyPlacedOrder.is_order_line_refunded(order_line):
                     return True
         return False
+
+    @staticmethod
+    def is_order_line_refunded(order_line):
+        """
+        checks if the order line is refunded
+        Returns:
+            boolean: True if order line is refunded else false
+        """
+        return RefundLine.objects.filter(order_line=order_line, status='Complete').exists()

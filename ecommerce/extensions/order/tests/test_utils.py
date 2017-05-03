@@ -23,8 +23,9 @@ NoShippingRequired = get_class('shipping.methods', 'NoShippingRequired')
 OrderCreator = get_class('order.utils', 'OrderCreator')
 OrderNumberGenerator = get_class('order.utils', 'OrderNumberGenerator')
 OrderTotalCalculator = get_class('checkout.calculators', 'OrderTotalCalculator')
-ShippingAddress = get_class('order.models', 'ShippingAddress')
 OrderLine = get_model('order', 'Line')
+RefundLine = get_model('refund', 'RefundLine')
+ShippingAddress = get_class('order.models', 'ShippingAddress')
 
 
 class OrderNumberGeneratorTests(TestCase):
@@ -214,5 +215,8 @@ class UserAlreadyPlacedOrderTests(TestCase):
         """
         user = self.create_user()
         refund = RefundFactory(user=user)
+        refund_line = RefundLine.objects.get(refund=refund)
+        refund_line.status = 'Complete'
+        refund_line.save()
         product = self.get_order_product(order=refund.order)
         self.assertFalse(UserAlreadyPlacedOrder.user_already_placed_order(user=user, product=product))

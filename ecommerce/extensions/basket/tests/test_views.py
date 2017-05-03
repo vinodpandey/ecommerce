@@ -16,6 +16,7 @@ from factory.fuzzy import FuzzyText
 from oscar.apps.basket.forms import BasketVoucherForm
 from oscar.core.loading import get_class, get_model
 from oscar.test import newfactories as factories
+from oscar.test.factories import create_order
 from oscar.test.utils import RequestFactory
 from requests.exceptions import ConnectionError, Timeout
 from slumber.exceptions import SlumberBaseException
@@ -32,6 +33,7 @@ from ecommerce.courses.tests.factories import CourseFactory
 from ecommerce.extensions.basket.utils import get_basket_switch_data
 from ecommerce.extensions.catalogue.tests.mixins import CourseCatalogTestMixin
 from ecommerce.extensions.offer.utils import format_benefit_value
+from ecommerce.extensions.order.utils import UserAlreadyPlacedOrder
 from ecommerce.extensions.payment.constants import CLIENT_SIDE_CHECKOUT_FLAG_NAME
 from ecommerce.extensions.payment.forms import PaymentForm
 from ecommerce.extensions.payment.tests.processors import DummyProcessor
@@ -40,12 +42,14 @@ from ecommerce.tests.factories import ProductFactory, StockRecordFactory
 from ecommerce.tests.mixins import ApiMockMixin, LmsApiMockMixin
 from ecommerce.tests.testcases import TestCase
 
+
 Applicator = get_class('offer.utils', 'Applicator')
 Basket = get_model('basket', 'Basket')
 Benefit = get_model('offer', 'Benefit')
 Catalog = get_model('catalogue', 'Catalog')
 Condition = get_model('offer', 'Condition')
 ConditionalOffer = get_model('offer', 'ConditionalOffer')
+OrderLine = get_model('order', 'Line')
 Product = get_model('catalogue', 'Product')
 ProductAttribute = get_model('catalogue', 'ProductAttribute')
 Selector = get_class('partner.strategy', 'Selector')
@@ -167,6 +171,43 @@ class BasketSingleItemViewTests(CouponMixin, CourseCatalogTestMixin, CourseCatal
         self.assertTrue(basket.contains_a_voucher)
         self.assertEqual(basket.lines.first().product, self.stock_record.product)
 
+    def test_already_purchased_product(self):
+        """
+        Verify student can not place multiple orders for single course seat
+        """
+        course = CourseFactory()
+        product = course.create_or_update_seat("Verified", True, 0, self.partner)
+        stock_record = StockRecordFactory(product=product, partner=self.partner)
+        catalog = Catalog.objects.create(partner=self.partner)
+        catalog.stock_records.add(stock_record)
+        sku = stock_record.partner_sku
+        basket = factories.BasketFactory(owner=self.user, site=self.site)
+        basket.add_product(product, 1)
+        create_order(user=self.user, basket=basket)
+        url = '{path}?sku={sku}'.format(path=self.path, sku=sku)
+        expected_content = 'You have already purchased this {course} seat.'.format(course=product.course.name)
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context['error'], expected_content)
+
+    def test_not_already_purchased_product(self):
+        """
+        Verify student can place order for not purchased product
+        """
+        course = CourseFactory()
+        product = course.create_or_update_seat("Verified", True, 0, self.partner)
+        stock_record = StockRecordFactory(product=product, partner=self.partner)
+        catalog = Catalog.objects.create(partner=self.partner)
+        catalog.stock_records.add(stock_record)
+        sku = stock_record.partner_sku
+
+        url = '{path}?sku={sku}'.format(path=self.path, sku=sku)
+        response = self.client.get(url)
+
+        self.assertEqual(response.status_code, 303)
+        self.assertEqual(response.wsgi_request.path_info, '/basket/single-item/')
+        self.assertEqual(response.wsgi_request.GET['sku'], sku)
+
 
 @ddt.ddt
 class BasketMultipleItemsViewTests(CourseCatalogTestMixin, TestCase):
@@ -222,6 +263,52 @@ class BasketMultipleItemsViewTests(CourseCatalogTestMixin, TestCase):
         basket = response.wsgi_request.basket
         self.assertEqual(basket.status, Basket.OPEN)
         self.assertTrue(basket.contains_voucher(voucher.code))
+
+    def test_all_already_purchased_products(self):
+        """
+        Test user can not purchase products again using the multiple item view
+        """
+        course = CourseFactory()
+        product1 = course.create_or_update_seat("Verified", True, 0, self.partner)
+        product2 = course.create_or_update_seat("Professional", True, 0, self.partner)
+        stock_record = StockRecordFactory(product=product1, partner=self.partner)
+        catalog = Catalog.objects.create(partner=self.partner)
+        catalog.stock_records.add(stock_record)
+        stock_record = StockRecordFactory(product=product2, partner=self.partner)
+        catalog.stock_records.add(stock_record)
+
+        qs = urllib.urlencode({'sku': [product.stockrecords.first().partner_sku for product in [product1, product2]]},
+                              True)
+        url = '{root}?{qs}'.format(root=self.path, qs=qs)
+        with mock.patch.object(UserAlreadyPlacedOrder, 'user_already_placed_order', return_value=True):
+            response = self.client.get(url)
+            self.assertEqual(response.status_code, 200)
+            self.assertEqual(response.context['error'], 'You have already purchased these products')
+
+    def test_not_already_purchased_products(self):
+        """
+        Test user can purchase products which have not been already purchased
+        """
+        products = ProductFactory.create_batch(3, stockrecords__partner=self.partner)
+        qs = urllib.urlencode({'sku': [product.stockrecords.first().partner_sku for product in products]}, True)
+        url = '{root}?{qs}'.format(root=self.path, qs=qs)
+        with mock.patch.object(UserAlreadyPlacedOrder, 'user_already_placed_order', return_value=False):
+            response = self.client.get(url)
+            self.assertEqual(response.status_code, 303)
+
+    def test_one_already_purchased_product(self):
+        """
+        Test prepare_basket removes already purchased product and checkout for the rest of products
+        """
+        order = create_order(user=self.user)
+        products = ProductFactory.create_batch(3, stockrecords__partner=self.partner)
+        products.append(OrderLine.objects.get(order=order).product)
+        qs = urllib.urlencode({'sku': [product.stockrecords.first().partner_sku for product in products]}, True)
+        url = '{root}?{qs}'.format(root=self.path, qs=qs)
+        response = self.client.get(url)
+        basket = response.wsgi_request.basket
+        self.assertEqual(response.status_code, 303)
+        self.assertEqual(basket.lines.count(), len(products) - 1)
 
 
 @httpretty.activate

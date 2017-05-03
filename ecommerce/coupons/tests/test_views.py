@@ -22,6 +22,7 @@ from ecommerce.enterprise.utils import (
 from ecommerce.extensions.catalogue.tests.mixins import CourseCatalogTestMixin
 from ecommerce.extensions.checkout.mixins import EdxOrderPlacementMixin
 from ecommerce.extensions.checkout.utils import get_receipt_page_url
+from ecommerce.extensions.order.utils import UserAlreadyPlacedOrder
 from ecommerce.extensions.test.factories import prepare_voucher
 from ecommerce.tests.mixins import ApiMockMixin, LmsApiMockMixin
 from ecommerce.tests.testcases import TestCase
@@ -547,6 +548,17 @@ class CouponRedeemViewTests(CouponMixin, CourseCatalogTestMixin, LmsApiMockMixin
         self.mock_access_token_response()
 
         self.assert_redirects_to_receipt_page(code=code)
+
+    @httpretty.activate
+    def test_already_enrolled_rejection(self):
+        """ Verify a user is rejected from redeeming a coupon for a course he's already enrolled in."""
+        self.mock_account_api(self.request, self.user.username, data={'is_active': True})
+        self.mock_access_token_response()
+        self.create_coupon_and_get_code()
+        with mock.patch.object(UserAlreadyPlacedOrder, 'user_already_placed_order', return_value=True):
+            response = self.client.get(self.redeem_url_with_params())
+            msg = 'You have already purchased this {course} seat.'.format(course=self.course.name)
+            self.assertEqual(response.context['error'], msg)
 
     @httpretty.activate
     def test_invalid_email_domain_rejection(self):
