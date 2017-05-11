@@ -76,6 +76,7 @@ class CouponViewSetTest(CouponMixin, CourseCatalogTestMixin, TestCase):
             'catalog_query': None,
             'course_seat_types': None,
             'email_domains': None,
+            'program_uuid': None,
         }
 
     def build_request(self):
@@ -199,7 +200,8 @@ class CouponViewSetTest(CouponMixin, CourseCatalogTestMixin, TestCase):
             'quantity',
             'start_datetime',
             'title',
-            'voucher_type'
+            'voucher_type',
+            'program_uuid'
         ]
         self.assertEqual(sorted(expected_cleaned_voucher_data_keys), sorted(cleaned_voucher_data.keys()))
 

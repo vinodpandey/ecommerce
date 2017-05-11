@@ -105,6 +105,7 @@ class CouponViewSet(EdxOrderPlacementMixin, viewsets.ModelViewSet):
                         start_datetime=cleaned_voucher_data['start_datetime'],
                         title=cleaned_voucher_data['title'],
                         voucher_type=cleaned_voucher_data['voucher_type'],
+                        program_uuid=cleaned_voucher_data['program_uuid'],
                     )
                 except (KeyError, IntegrityError) as error:
                     logger.exception('Coupon creation failed!')
@@ -143,6 +144,7 @@ class CouponViewSet(EdxOrderPlacementMixin, viewsets.ModelViewSet):
         partner = request.site.siteconfiguration.partner
         stock_record_ids = request.data.get('stock_record_ids')
         voucher_type = request.data.get('voucher_type')
+        program_uuid = request.data.get('program_uuid')
 
         if benefit_type not in (Benefit.PERCENTAGE, Benefit.FIXED,):
             raise ValidationError('Benefit type [{type}] is not allowed'.format(type=benefit_type))
@@ -202,6 +204,7 @@ class CouponViewSet(EdxOrderPlacementMixin, viewsets.ModelViewSet):
             'start_datetime': request.data.get('start_datetime'),
             'title': request.data.get('title'),
             'voucher_type': voucher_type,
+            'program_uuid': program_uuid,
         }
 
     @classmethod
@@ -334,9 +337,12 @@ class CouponViewSet(EdxOrderPlacementMixin, viewsets.ModelViewSet):
 
             self.update_range_data(request, vouchers)
 
+            program_uuid = request.data.get('program_uuid')
+
             benefit_value = request.data.get('benefit_value')
             if benefit_value:
-                self.update_coupon_benefit_value(benefit_value=benefit_value, vouchers=vouchers, coupon=coupon)
+                self.update_coupon_benefit_value(benefit_value=benefit_value, vouchers=vouchers,
+                                                 coupon=coupon, program_uuid=program_uuid)
 
             category_data = request.data.get('category')
             if category_data:
@@ -395,7 +401,7 @@ class CouponViewSet(EdxOrderPlacementMixin, viewsets.ModelViewSet):
                     update_dict[field.replace('invoice_', '')] = value
         return update_dict
 
-    def update_coupon_benefit_value(self, benefit_value, coupon, vouchers):
+    def update_coupon_benefit_value(self, benefit_value, coupon, vouchers, program_uuid=None):
         """
         Remove all offers from the vouchers and add a new offer
         Arguments:
@@ -411,7 +417,8 @@ class CouponViewSet(EdxOrderPlacementMixin, viewsets.ModelViewSet):
             benefit_value=benefit_value,
             benefit_type=voucher_offer.benefit.type,
             coupon=coupon,
-            max_uses=voucher_offer.max_global_applications
+            max_uses=voucher_offer.max_global_applications,
+            program_uuid=program_uuid
         )
         for voucher in vouchers.all():
             voucher.offers.clear()
