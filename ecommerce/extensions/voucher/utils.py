@@ -602,6 +602,7 @@ def update_voucher_offer(offer, benefit_value, benefit_type, coupon, max_uses=No
         max_uses (int): number of maximum global application number an offer can have.
         email_domains (str): a comma-separated string of email domains allowed to apply
                             this offer.
+        program_uuid (str): Program UUID
 
     Returns:
         Offer

@@ -408,6 +408,7 @@ class CouponViewSet(EdxOrderPlacementMixin, viewsets.ModelViewSet):
             benefit_value (Decimal): Benefit value associated with a new offer
             coupon (Product): Coupon product associated with vouchers
             vouchers (ManyRelatedManager): Vouchers associated with the coupon to be updated
+            program_uuid (str): Program UUID
         """
         voucher_offers = vouchers.first().offers
         voucher_offer = voucher_offers.first()

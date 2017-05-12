@@ -154,14 +154,6 @@ class UtilTests(CouponMixin, CourseCatalogMockMixin, CourseCatalogTestMixin, Lms
             course_seat_types=course_seat_types,
         )
 
-    def create_program_coupon(self, coupon_title, quantity, program_uuid, course_seat_types):
-        return self.create_coupon(
-            title=coupon_title,
-            quantity=quantity,
-            program_uuid=program_uuid,
-            course_seat_types=course_seat_types,
-        )
-
     def use_voucher(self, order_num, voucher, user):
         """
         Mark voucher as used by provided users
@@ -298,8 +290,8 @@ class UtilTests(CouponMixin, CourseCatalogMockMixin, CourseCatalogTestMixin, Lms
         quantity = 1
         program_uuid = uuid.uuid4()
 
-        program_coupon = self.create_program_coupon(
-            coupon_title=coupon_title,
+        program_coupon = self.create_coupon(
+            title=coupon_title,
             quantity=quantity,
             program_uuid=program_uuid,
             course_seat_types='verified',
@@ -307,8 +299,7 @@ class UtilTests(CouponMixin, CourseCatalogMockMixin, CourseCatalogTestMixin, Lms
         self.assertEqual(program_coupon.title, coupon_title)
 
         program_vouchers = program_coupon.attr.coupon_vouchers.vouchers.all()
-        program_voucher_offers = program_vouchers.first().offers
-        program_voucher_offer = program_voucher_offers.first()
+        program_voucher_offer = program_vouchers.first().offers.first()
         self.assertEqual(program_vouchers.count(), quantity)
         self.assertEqual(program_voucher_offer.condition.program_uuid, program_uuid)
 
