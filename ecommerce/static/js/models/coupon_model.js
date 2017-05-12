@@ -33,7 +33,8 @@ define([
         var CATALOG_TYPES = {
             single_course: 'Single course',
             multiple_courses: 'Multiple courses',
-            catalog: 'Catalog'
+            catalog: 'Catalog',
+            program: 'Program',
         };
 
         return Backbone.RelationalModel.extend({
@@ -151,6 +152,12 @@ define([
                     pattern: 'number',
                     required: function () {
                         return this.isPrepaidInvoiceType();
+                    }
+                },
+                program_uuid: {
+                    msg: gettext('A valid Program UUID is required.'),
+                    required: function () {
+                        return this.get('catalog_type') === CATALOG_TYPES.program;
                     }
                 },
                 quantity: {pattern: 'number'},
