@@ -498,7 +498,9 @@ def create_vouchers(
         # make sure enterprise_customer is None if it's empty
         enterprise_customer = enterprise_customer or None
         # we do not need a range if this is for a Program
-        if not program_uuid:
+        if program_uuid:
+            product_range = None
+        else:
             product_range, __ = Range.objects.get_or_create(
                 name=range_name,
                 catalog=catalog,
@@ -507,8 +509,6 @@ def create_vouchers(
                 course_seat_types=course_seat_types,
                 enterprise_customer=enterprise_customer,
             )
-        else:
-            product_range = None
 
     # In case of more than 1 multi-usage coupon, each voucher needs to have an individual
     # offer because the usage is tied to the offer so that a usage on one voucher would
