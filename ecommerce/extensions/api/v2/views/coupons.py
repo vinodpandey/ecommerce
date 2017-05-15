@@ -338,11 +338,10 @@ class CouponViewSet(EdxOrderPlacementMixin, viewsets.ModelViewSet):
             self.update_range_data(request, vouchers)
 
             program_uuid = request.data.get('program_uuid')
-
             benefit_value = request.data.get('benefit_value')
-            if benefit_value:
-                self.update_coupon_benefit_value(benefit_value=benefit_value, vouchers=vouchers,
-                                                 coupon=coupon, program_uuid=program_uuid)
+            if benefit_value or program_uuid:
+                self.update_coupon_offer(benefit_value=benefit_value, vouchers=vouchers,
+                                         coupon=coupon, program_uuid=program_uuid)
 
             category_data = request.data.get('category')
             if category_data:
@@ -401,13 +400,13 @@ class CouponViewSet(EdxOrderPlacementMixin, viewsets.ModelViewSet):
                     update_dict[field.replace('invoice_', '')] = value
         return update_dict
 
-    def update_coupon_benefit_value(self, benefit_value, coupon, vouchers, program_uuid=None):
+    def update_coupon_offer(self, coupon, vouchers, benefit_value=None, program_uuid=None):
         """
         Remove all offers from the vouchers and add a new offer
         Arguments:
-            benefit_value (Decimal): Benefit value associated with a new offer
             coupon (Product): Coupon product associated with vouchers
             vouchers (ManyRelatedManager): Vouchers associated with the coupon to be updated
+            benefit_value (Decimal): Benefit value associated with a new offer
             program_uuid (str): Program UUID
         """
         voucher_offers = vouchers.first().offers
@@ -415,7 +414,7 @@ class CouponViewSet(EdxOrderPlacementMixin, viewsets.ModelViewSet):
 
         new_offer = update_voucher_offer(
             offer=voucher_offer,
-            benefit_value=benefit_value,
+            benefit_value=benefit_value or voucher_offer.benefit.value,
             benefit_type=voucher_offer.benefit.type,
             coupon=coupon,
             max_uses=voucher_offer.max_global_applications,
