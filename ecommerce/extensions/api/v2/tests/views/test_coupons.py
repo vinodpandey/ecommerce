@@ -719,7 +719,7 @@ class CouponViewSetFunctionalTest(CouponMixin, CourseCatalogTestMixin, CourseCat
         max_uses = vouchers[0].offers.first().max_global_applications
         benefit_value = Decimal(54)
 
-        CouponViewSet().update_coupon_benefit_value(
+        CouponViewSet().update_coupon_offer(
             benefit_value=benefit_value,
             vouchers=vouchers,
             coupon=self.coupon
