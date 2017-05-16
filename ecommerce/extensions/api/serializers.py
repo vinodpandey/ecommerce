@@ -68,6 +68,10 @@ def retrieve_offer(obj):
     return retrieve_voucher(obj).offers.first()
 
 
+def retrieve_range(obj):
+    """Helper method to retrieve the range from coupon."""
+    return retrieve_offer(obj).condition.range
+
 def retrieve_quantity(obj):
     """Helper method to retrieve number of vouchers. """
     return obj.attr.coupon_vouchers.vouchers.count()
@@ -563,6 +567,7 @@ class CouponSerializer(ProductPaymentInfoMixin, serializers.ModelSerializer):
     note = serializers.SerializerMethodField()
     num_uses = serializers.SerializerMethodField()
     payment_information = serializers.SerializerMethodField()
+    program_uuid = serializers.SerializerMethodField()
     quantity = serializers.SerializerMethodField()
     start_date = serializers.SerializerMethodField()
     voucher_type = serializers.SerializerMethodField()
@@ -576,10 +581,10 @@ class CouponSerializer(ProductPaymentInfoMixin, serializers.ModelSerializer):
         return retrieve_benefit(obj).value
 
     def get_catalog_query(self, obj):
-        return retrieve_offer(obj).condition.range.catalog_query
+        return retrieve_range(obj).catalog_query if retrieve_range(obj) else None
 
     def get_course_catalog(self, obj):
-        return retrieve_offer(obj).condition.range.course_catalog
+        return retrieve_range(obj).course_catalog if retrieve_range(obj) else None
 
     def get_category(self, obj):
         category = ProductCategory.objects.filter(product=obj).first().category
@@ -605,8 +610,12 @@ class CouponSerializer(ProductPaymentInfoMixin, serializers.ModelSerializer):
         return _('ACTIVE') if in_time_interval else _('INACTIVE')
 
     def get_course_seat_types(self, obj):
-        offer = retrieve_offer(obj)
-        course_seat_types = offer.condition.range.course_seat_types
+        offer_range = retrieve_range(obj)
+
+        if not offer_range:
+            return None
+
+        course_seat_types = offer_range.course_seat_types
         return course_seat_types.split(',') if course_seat_types else course_seat_types
 
     def get_email_domains(self, obj):
@@ -617,10 +626,8 @@ class CouponSerializer(ProductPaymentInfoMixin, serializers.ModelSerializer):
         return retrieve_end_date(obj)
 
     def get_enterprise_customer(self, obj):
-        """
-        Get the Enterprise Customer UUID attached to a coupon.
-        """
-        return retrieve_offer(obj).condition.range.enterprise_customer
+        """ Get the Enterprise Customer UUID attached to a coupon. """
+        return retrieve_range(obj).enterprise_customer if retrieve_range(obj) else None
 
     def get_last_edited(self, obj):
         history = obj.history.latest()
@@ -640,6 +647,10 @@ class CouponSerializer(ProductPaymentInfoMixin, serializers.ModelSerializer):
         offer = retrieve_offer(obj)
         return offer.num_applications
 
+    def get_program_uuid(self, obj):
+        """ Get the Program UUID attached to the coupon. """
+        return retrieve_offer(obj).condition.program_uuid
+
     def get_payment_information(self, obj):
         """
         Retrieve the payment information.
@@ -657,11 +668,15 @@ class CouponSerializer(ProductPaymentInfoMixin, serializers.ModelSerializer):
         return retrieve_start_date(obj)
 
     def get_seats(self, obj):
-        offer = retrieve_offer(obj)
-        _range = offer.condition.range
+        offer_range = retrieve_range(obj)
+
+        if not offer_range:
+            return None
+
         request = self.context['request']
-        if _range.catalog:
-            stockrecords = _range.catalog.stock_records.all()
+
+        if offer_range.catalog:
+            stockrecords = offer_range.catalog.stock_records.all()
             seats = Product.objects.filter(id__in=[sr.product.id for sr in stockrecords])
             serializer = ProductSerializer(seats, many=True, context={'request': request})
             return serializer.data
@@ -677,7 +692,7 @@ class CouponSerializer(ProductPaymentInfoMixin, serializers.ModelSerializer):
             'benefit_type', 'benefit_value', 'catalog_query', 'course_catalog', 'category',
             'client', 'code', 'code_status', 'coupon_type', 'course_seat_types',
             'email_domains', 'end_date', 'enterprise_customer', 'id', 'last_edited', 'max_uses',
-            'note', 'num_uses', 'payment_information', 'price', 'quantity',
+            'note', 'num_uses', 'payment_information', 'program_uuid', 'price', 'quantity',
             'seats', 'start_date', 'title', 'voucher_type'
         )
 

@@ -25,6 +25,8 @@ from ecommerce.extensions.api.v2.views.coupons import CouponViewSet
 from ecommerce.extensions.catalogue.tests.mixins import CourseCatalogTestMixin
 from ecommerce.extensions.voucher.models import CouponVouchers
 from ecommerce.invoice.models import Invoice
+from ecommerce.programs.constants import BENEFIT_MAP
+from ecommerce.programs.custom import class_path
 from ecommerce.tests.factories import ProductFactory, SiteConfigurationFactory
 from ecommerce.tests.mixins import ThrottlingMixin
 from ecommerce.tests.testcases import TestCase
@@ -34,6 +36,7 @@ Basket = get_model('basket', 'Basket')
 Benefit = get_model('offer', 'Benefit')
 Catalog = get_model('catalogue', 'Catalog')
 Category = get_model('catalogue', 'Category')
+Condition = get_model('offer', 'Condition')
 Course = get_model('courses', 'Course')
 Order = get_model('order', 'Order')
 Product = get_model('catalogue', 'Product')
@@ -1040,6 +1043,47 @@ class CouponViewSetFunctionalTest(CouponMixin, CourseCatalogTestMixin, CourseCat
             'application/json'
         )
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_create_coupon_with_program_uuid(self):
+        """Verify create coupon with program uuid."""
+        proxy_class = class_path(BENEFIT_MAP[self.data['benefit_type']])
+        self.data.update({
+            'program_uuid': str(uuid4()),
+            'title': 'Program Coupon',
+            'enterprise_customer': None,
+            'stock_record_ids': []
+        })
+        self.assertEqual(Benefit.objects.filter(proxy_class=proxy_class).count(), 0)
+        self.assertEqual(Condition.objects.filter(program_uuid=self.data['program_uuid']).count(), 0)
+
+        details = self._create_and_get_coupon_details()
+        self.assertEqual(details['program_uuid'], self.data['program_uuid'])
+        self.assertEqual(details['title'], self.data['title'])
+        self.assertEqual(Benefit.objects.filter(proxy_class=proxy_class).count(), 1)
+        self.assertEqual(Condition.objects.filter(program_uuid=self.data['program_uuid']).count(), 1)
+
+    def test_update_coupon_with_program_uuid(self):
+        """Verify update coupon program uuid."""
+        program_uuid = str(uuid4())
+        self.data.update({
+            'program_uuid': program_uuid,
+            'title': 'Program Coupon',
+            'enterprise_customer': None,
+            'stock_record_ids': []
+        })
+        details = self._create_and_get_coupon_details()
+        self.assertEqual(details['program_uuid'], program_uuid)
+        self.assertEqual(details['title'], self.data['title'])
+
+        edited_program_uuid = str(uuid4())
+        coupon = Product.objects.get(title=self.data['title'])
+        response_data = self.get_response_json(
+            'PUT',
+            reverse('api:v2:coupons-detail', kwargs={'pk': coupon.pk}),
+            data={'program_uuid': edited_program_uuid}
+        )
+        self.assertEqual(response_data['program_uuid'], edited_program_uuid)
+        self.assertEqual(response_data['title'], self.data['title'])
 
 
 class CouponCategoriesListViewTests(TestCase):
