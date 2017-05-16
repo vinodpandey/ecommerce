@@ -59,7 +59,7 @@ def prepare_basket(request, products, voucher=None):
                 mode_for_seat(product),
                 product.course_id
             )
-    if not already_purchased_products and basket.is_empty:
+    if already_purchased_products and basket.is_empty:
         raise AlreadyPlacedOrderException
 
     if len(products) == 1 and products[0].is_enrollment_code_product:
