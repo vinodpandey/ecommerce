@@ -43,6 +43,7 @@ def prepare_basket(request, products, voucher=None):
     basket.flush()
     basket.save()
     basket_addition = get_class('basket.signals', 'basket_addition')
+    already_purchased_products = []
     for product in products:
         if product.is_enrollment_code_product or \
                 not UserAlreadyPlacedOrder.user_already_placed_order(request.user, product):
@@ -51,13 +52,14 @@ def prepare_basket(request, products, voucher=None):
             basket_addition.send(sender=basket_addition, product=product, user=request.user, request=request,
                                  basket=basket)
         else:
+            already_purchased_products.append(product)
             logger.warning(
                 'User [%s] attempted to repurchase the [%s] seat of course [%s]',
                 request.user.username,
                 mode_for_seat(product),
                 product.course_id
             )
-    if basket.is_empty:
+    if not already_purchased_products and basket.is_empty:
         raise AlreadyPlacedOrderException
 
     if len(products) == 1 and products[0].is_enrollment_code_product:
