@@ -1,4 +1,5 @@
 """Test Order Utility classes """
+import ddt
 import logging
 
 import mock
@@ -176,6 +177,7 @@ class OrderCreatorTests(TestCase):
             l.check((LOGGER_NAME, 'ERROR', message))
 
 
+@ddt.ddt
 class UserAlreadyPlacedOrderTests(TestCase):
     """
     Tests for Util class UserAlreadyPlacedOrder
@@ -195,6 +197,16 @@ class UserAlreadyPlacedOrderTests(TestCase):
         """
         order = self.order if not order else order
         return OrderLine.objects.get(order=order).product
+
+    def create_refunded_order(self, user=None):
+        """
+        Args:
+            user: For whom we are creating a refunded order
+
+        Returns:
+                order
+        """
+        
 
     def test_already_have_not_refunded_order(self):
         """
@@ -220,3 +232,16 @@ class UserAlreadyPlacedOrderTests(TestCase):
         refund_line.save()
         product = self.get_order_product(order=refund.order)
         self.assertFalse(UserAlreadyPlacedOrder.user_already_placed_order(user=user, product=product))
+
+    @ddt.data(('Open', False), ('Revocation Error', False), ('Denied', False), ('Complete', True))
+    @ddt.unpack
+    def test_is_order_line_refunded(self, refund_line_status, is_refunded):
+        """
+        Tests the functionality of is_order_line_refunded method.
+        """
+        user = self.create_user()
+        refund = RefundFactory(user=user)
+        refund_line = RefundLine.objects.get(refund=refund)
+        refund_line.status = refund_line_status
+        refund_line.save()
+        self.assertEqual(UserAlreadyPlacedOrder.is_order_line_refunded(refund_line.order_line), is_refunded)
