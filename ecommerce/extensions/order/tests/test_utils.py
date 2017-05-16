@@ -1,7 +1,7 @@
 """Test Order Utility classes """
-import ddt
 import logging
 
+import ddt
 import mock
 from django.test.client import RequestFactory
 from oscar.core.loading import get_class, get_model
