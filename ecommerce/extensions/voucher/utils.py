@@ -307,10 +307,14 @@ def _get_or_create_offer(
     try:
         if program_uuid:
             proxy_class = class_path(BENEFIT_MAP[benefit_type])
-            offer_benefit = Benefit()
-            offer_benefit.proxy_class = proxy_class
-            offer_benefit.value = benefit_value
-            offer_benefit.save()
+            offer_benefit = Benefit.objects.filter(proxy_class=proxy_class, value=benefit_value).first()
+
+            if not offer_benefit:
+                offer_benefit = Benefit()
+                offer_benefit.proxy_class = proxy_class
+                offer_benefit.value = benefit_value
+                offer_benefit.save()
+
             offer_name = "Coupon [{}]-{}".format(coupon_id, offer_benefit.name)
         else:
             offer_benefit, __ = Benefit.objects.get_or_create(

@@ -72,6 +72,7 @@ def retrieve_range(obj):
     """Helper method to retrieve the range from coupon."""
     return retrieve_offer(obj).condition.range
 
+
 def retrieve_quantity(obj):
     """Helper method to retrieve number of vouchers. """
     return obj.attr.coupon_vouchers.vouchers.count()

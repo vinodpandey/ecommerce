@@ -1065,15 +1065,21 @@ class CouponViewSetFunctionalTest(CouponMixin, CourseCatalogTestMixin, CourseCat
     def test_update_coupon_with_program_uuid(self):
         """Verify update coupon program uuid."""
         program_uuid = str(uuid4())
+        proxy_class = class_path(BENEFIT_MAP[self.data['benefit_type']])
         self.data.update({
             'program_uuid': program_uuid,
             'title': 'Program Coupon',
             'enterprise_customer': None,
             'stock_record_ids': []
         })
+        self.assertEqual(Benefit.objects.filter(proxy_class=proxy_class).count(), 0)
+        self.assertEqual(Condition.objects.filter(program_uuid=self.data['program_uuid']).count(), 0)
+
         details = self._create_and_get_coupon_details()
         self.assertEqual(details['program_uuid'], program_uuid)
         self.assertEqual(details['title'], self.data['title'])
+        self.assertEqual(Benefit.objects.filter(proxy_class=proxy_class).count(), 1)
+        self.assertEqual(Condition.objects.filter(program_uuid=self.data['program_uuid']).count(), 1)
 
         edited_program_uuid = str(uuid4())
         coupon = Product.objects.get(title=self.data['title'])
@@ -1084,6 +1090,8 @@ class CouponViewSetFunctionalTest(CouponMixin, CourseCatalogTestMixin, CourseCat
         )
         self.assertEqual(response_data['program_uuid'], edited_program_uuid)
         self.assertEqual(response_data['title'], self.data['title'])
+        self.assertEqual(Benefit.objects.filter(proxy_class=proxy_class).count(), 1)
+        self.assertEqual(Condition.objects.filter(program_uuid=edited_program_uuid).count(), 1)
 
 
 class CouponCategoriesListViewTests(TestCase):
