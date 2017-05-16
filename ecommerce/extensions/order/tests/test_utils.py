@@ -198,16 +198,6 @@ class UserAlreadyPlacedOrderTests(TestCase):
         order = self.order if not order else order
         return OrderLine.objects.get(order=order).product
 
-    def create_refunded_order(self, user=None):
-        """
-        Args:
-            user: For whom we are creating a refunded order
-
-        Returns:
-                order
-        """
-        
-
     def test_already_have_not_refunded_order(self):
         """
         Test the case that user have a non refunded order for the product.
