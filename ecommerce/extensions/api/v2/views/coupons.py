@@ -415,7 +415,7 @@ class CouponViewSet(EdxOrderPlacementMixin, viewsets.ModelViewSet):
         voucher_offer = voucher_offers.first()
 
         if program_uuid:
-            program_condition = Condition.objects.filter(
+            Condition.objects.filter(
                 program_uuid=voucher_offer.condition.program_uuid
             ).update(program_uuid=program_uuid)
 
