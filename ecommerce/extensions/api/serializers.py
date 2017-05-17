@@ -582,10 +582,12 @@ class CouponSerializer(ProductPaymentInfoMixin, serializers.ModelSerializer):
         return retrieve_benefit(obj).value
 
     def get_catalog_query(self, obj):
-        return retrieve_range(obj).catalog_query if retrieve_range(obj) else None
+        offer_range = retrieve_range(obj)
+        return offer_range.catalog_query if offer_range else None
 
     def get_course_catalog(self, obj):
-        return retrieve_range(obj).course_catalog if retrieve_range(obj) else None
+        offer_range = retrieve_range(obj)
+        return offer_range.course_catalog if offer_range else None
 
     def get_category(self, obj):
         category = ProductCategory.objects.filter(product=obj).first().category
@@ -611,13 +613,14 @@ class CouponSerializer(ProductPaymentInfoMixin, serializers.ModelSerializer):
         return _('ACTIVE') if in_time_interval else _('INACTIVE')
 
     def get_course_seat_types(self, obj):
+        seat_types = []
         offer_range = retrieve_range(obj)
 
-        if not offer_range:
-            return None
+        if offer_range:
+            course_seat_types = offer_range.course_seat_types or ''
+            seat_types = course_seat_types.split(',')
 
-        course_seat_types = offer_range.course_seat_types
-        return course_seat_types.split(',') if course_seat_types else course_seat_types
+        return seat_types
 
     def get_email_domains(self, obj):
         offer = retrieve_offer(obj)
@@ -628,7 +631,8 @@ class CouponSerializer(ProductPaymentInfoMixin, serializers.ModelSerializer):
 
     def get_enterprise_customer(self, obj):
         """ Get the Enterprise Customer UUID attached to a coupon. """
-        return retrieve_range(obj).enterprise_customer if retrieve_range(obj) else None
+        offer_range = retrieve_range(obj)
+        return offer_range.enterprise_customer if offer_range else None
 
     def get_last_edited(self, obj):
         history = obj.history.latest()
@@ -670,19 +674,15 @@ class CouponSerializer(ProductPaymentInfoMixin, serializers.ModelSerializer):
 
     def get_seats(self, obj):
         offer_range = retrieve_range(obj)
-
-        if not offer_range:
-            return None
-
         request = self.context['request']
 
-        if offer_range.catalog:
+        if offer_range and offer_range.catalog:
             stockrecords = offer_range.catalog.stock_records.all()
             seats = Product.objects.filter(id__in=[sr.product.id for sr in stockrecords])
             serializer = ProductSerializer(seats, many=True, context={'request': request})
             return serializer.data
-        else:
-            return None
+
+        return {}
 
     def get_voucher_type(self, obj):
         return retrieve_voucher_usage(obj)
