@@ -1,6 +1,13 @@
 import os
+from os.path import dirname, join
+
+from dotenv import load_dotenv
 
 from e2e.utils import str2bool
+
+# Load environment variables from an external file
+dotenv_path = os.environ.get('DOTENV_PATH', join(dirname(__file__), '.env'))
+load_dotenv(dotenv_path)
 
 OAUTH_ACCESS_TOKEN_URL = os.environ.get('OAUTH_ACCESS_TOKEN_URL')
 OAUTH_CLIENT_ID = os.environ.get('OAUTH_CLIENT_ID')
