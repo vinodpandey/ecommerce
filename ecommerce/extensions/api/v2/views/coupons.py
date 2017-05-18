@@ -340,11 +340,6 @@ class CouponViewSet(EdxOrderPlacementMixin, viewsets.ModelViewSet):
             self.update_range_data(request, vouchers)
 
             program_uuid = request.data.get('program_uuid')
-            if program_uuid:
-                Condition.objects.filter(
-                    program_uuid=vouchers.first().offers.first().condition.program_uuid
-                ).update(program_uuid=program_uuid)
-
             benefit_value = request.data.get('benefit_value')
             if benefit_value or program_uuid:
                 self.update_coupon_offer(benefit_value=benefit_value, vouchers=vouchers,
@@ -418,6 +413,11 @@ class CouponViewSet(EdxOrderPlacementMixin, viewsets.ModelViewSet):
         """
         voucher_offers = vouchers.first().offers
         voucher_offer = voucher_offers.first()
+
+        if program_uuid:
+            Condition.objects.filter(
+                program_uuid=voucher_offer.condition.program_uuid
+            ).update(program_uuid=program_uuid)
 
         new_offer = update_voucher_offer(
             offer=voucher_offer,
